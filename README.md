@@ -1,4 +1,4 @@
-# DuoTranslate — protótipo 1.0
+# DuoTranslate — protótipo 1.1
 
 **Objetivo:** duas pessoas se comunicarem em português (Brasil) e francês (França), cada uma usando **seu próprio celular e fone Bluetooth comum**. A pessoa fala ao microfone do celular/fone; o outro aparelho reproduz a versão traduzida em voz alta.
 
@@ -13,6 +13,17 @@
 - Leitura em voz alta da tradução recebida com `speechSynthesis` — deve usar o dispositivo de saída padrão do telefone, incluindo Bluetooth quando roteado pelo sistema.
 - Botões para testar o áudio e para digitar frases manualmente se o reconhecimento de voz não funcionar.
 - Ao reproduzir uma tradução, o app tenta pausar temporariamente a captação para evitar que o áudio seja novamente traduzido.
+
+## Modo Teste Individual — v1.1 (sem segundo celular)
+
+1. Abra https://jvictorsouza217-tech.github.io/duotranslate/ e encontre **Modo teste individual** no topo. Não precisa criar sala.
+2. Selecione **Francês → Português** (ou o sentido contrário).
+3. **Testar frase de exemplo**: envia texto ao MyMemory, mostra a tradução e tenta reproduzi-la em voz alta. Não testa o microfone.
+4. **Começar a ouvir**: solicita o microfone; coloque uma fala francesa tocando em outro dispositivo, numa TV ou PC, perto do celular. Ao reconhecer uma frase, traduz e tenta reproduzir a tradução no áudio padrão (inclusive Bluetooth, quando selecionado pelo sistema).
+5. Use **Repetir última tradução** para testar a saída de áudio com um toque; também é possível digitar uma frase própria.
+6. Se o microfone não reconhecer, tente com o fone desconectado para verificar qual microfone está sendo utilizado; depois teste o JBL para validar a saída.
+
+**Limitações:** não capta automaticamente o som interno de vídeos no mesmo celular; pode haver interrupções após frases, dependência de rede, falhas de permissão e atraso. A fala pode ser tratada pelos serviços do navegador, e o texto vai ao MyMemory. Não use para conversas confidenciais. A página precisa permanecer aberta e o dispositivo desbloqueado.
 
 ## Como colocar online sem pagar (GitHub Pages)
 
@@ -60,8 +71,10 @@ Se a voz falhar especialmente no Safari, substituir a versão web por apps nativ
 ## Estrutura
 
 ```
-index.html          Interface
+index.html          Interface (inclui teste individual)
 style.css           Visual
+solo.js             Reconhecimento/tradução/reprodução no teste individual
+solo.css            Visual do modo teste
 app.js              Conexão, reconhecimento, tradução, áudio
 manifest.webmanifest Informações de aplicativo web
 icon.svg            Ícone
