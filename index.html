@@ -9,8 +9,10 @@
   <link rel="icon" href="icon.svg" type="image/svg+xml">
   <link rel="stylesheet" href="style.css">
   <link rel="stylesheet" href="solo.css">
+  <link rel="stylesheet" href="voice-settings.css">
   <title>DuoTranslate · Conversa sem fronteiras</title>
   <script src="https://unpkg.com/peerjs@1.5.5/dist/peerjs.min.js" defer></script>
+  <script src="voice-settings.js" defer></script>
   <script src="app.js" defer></script>
   <script src="solo.js" defer></script>
 </head>
@@ -19,7 +21,7 @@
   <div class="shell">
     <header class="topbar">
       <a class="brand" href="./" aria-label="DuoTranslate - início"><span class="brandmark">D<span>↔</span></span><span>Duo<span class="brand-light">Translate</span></span></a>
-      <span class="version">BETA 1.1</span>
+      <span class="version">BETA 1.2</span>
     </header>
 
     <main>
@@ -48,6 +50,26 @@
         <button id="soloReplay" type="button" class="solo-secondary solo-replay" disabled>🔊 Repetir última tradução</button>
         <p class="solo-footer">O texto é enviado ao serviço MyMemory; a fala pode ser processada pelo navegador. Não use dados confidenciais. A leitura em voz alta depende das permissões e do áudio Bluetooth do celular.</p>
       </section>
+
+      <details class="panel voice-panel" id="voicePanel">
+        <summary>🎙 Escolher vozes e velocidade <span style="font-size:11px;color:#9dadd5;font-weight:500">GRÁTIS</span></summary>
+        <div class="voice-settings-body">
+          <p>Escolha uma voz já instalada no seu celular para ouvir traduções e ajuste a velocidade. Não há conta, assinatura ou envio extra de dados.</p>
+          <div class="voice-settings-grid">
+            <div><label for="voicePt">Voz em português</label><select id="voicePt"><option value="">Automática (voz do celular)</option></select></div>
+            <div><label for="voiceFr">Voz em francês</label><select id="voiceFr"><option value="">Automática (voz do celular)</option></select></div>
+          </div>
+          <div class="voice-preview-row">
+            <button type="button" id="tryVoicePt">🔊 Ouvir português</button>
+            <button type="button" id="tryVoiceFr">🔊 Écouter le français</button>
+          </div>
+          <div class="voice-rate-row"><label for="voiceRate">Velocidade da voz</label><output id="voiceRateOut" for="voiceRate">1.00×</output></div>
+          <input type="range" id="voiceRate" min="0.75" max="1.25" step="0.05" value="1" aria-label="Velocidade da voz">
+          <label class="voice-fast"><input type="checkbox" id="fastSpeech"><span><strong>Modo rápido experimental</strong> — tenta concluir o reconhecimento assim que detecta que você parou de falar. Pode cortar ou perder frases; desative se isso acontecer.</span></label>
+          <p id="voiceSettingsStatus" class="voice-settings-status" role="status"></p>
+          <p class="voice-footnote">Estas são as vozes do sistema, não vozes de IA premium. As preferências ficam salvas somente neste navegador. As opções podem ser diferentes entre Samsung e iPhone.</p>
+        </div>
+      </details>
 
       <section class="panel" aria-labelledby="setup-title" id="setup">
         <div class="panel-heading"><span class="step">01</span><h2 id="setup-title">Seu idioma</h2></div>
