@@ -1,4 +1,4 @@
-# DuoTranslate — protótipo 1.1
+# DuoTranslate — protótipo 1.2
 
 **Objetivo:** duas pessoas se comunicarem em português (Brasil) e francês (França), cada uma usando **seu próprio celular e fone Bluetooth comum**. A pessoa fala ao microfone do celular/fone; o outro aparelho reproduz a versão traduzida em voz alta.
 
@@ -13,6 +13,16 @@
 - Leitura em voz alta da tradução recebida com `speechSynthesis` — deve usar o dispositivo de saída padrão do telefone, incluindo Bluetooth quando roteado pelo sistema.
 - Botões para testar o áudio e para digitar frases manualmente se o reconhecimento de voz não funcionar.
 - Ao reproduzir uma tradução, o app tenta pausar temporariamente a captação para evitar que o áudio seja novamente traduzido.
+
+## Versão 1.2: primeiro melhorias gratuitas
+
+A versão 1.1 aprovada foi preservada na branch **stable-v1.1**, para permitir retorno caso uma mudança cause problemas.
+
+**Novidades 1.2:** no painel recolhível **Escolher vozes e velocidade**, é possível selecionar entre as vozes disponíveis no próprio navegador/celular para pt e fr, ajustar a velocidade de leitura de 0,75 a 1,25 vezes e experimentar um **modo rápido**, desativado por padrão, que pede ao reconhecimento de voz para finalizar quando detecta que a pessoa parou de falar. O modo rápido pode cortar frases; compare ligado/desligado.
+
+Os resultados mostram **apenas o tempo da requisição de tradução ao MyMemory**, excluindo o tempo de reconhecimento de fala, a transmissão entre celulares e o começo ou a duração do áudio. Use isso para identificar se o atraso observado ocorre fora da API de tradução. A amostra de voz não deve ser reproduzida com o microfone ligado, para evitar eco.
+
+Esta etapa **não muda o motor de tradução** e não usa serviços pagos. Integração com DeepL API Free, Gemini ou serviço de voz baseado em IA necessita conta própria, cotas válidas e um proxy/backend para manter credenciais fora do repositório público. Não inserir chaves no GitHub Pages. A qualidade e rapidez das vozes do sistema dependem do aparelho.
 
 ## Modo Teste Individual — v1.1 (sem segundo celular)
 
@@ -75,6 +85,8 @@ index.html          Interface (inclui teste individual)
 style.css           Visual
 solo.js             Reconhecimento/tradução/reprodução no teste individual
 solo.css            Visual do modo teste
+voice-settings.js   Preferências gratuitas de voz e finalização experimental
+voice-settings.css  Painel visual de preferências
 app.js              Conexão, reconhecimento, tradução, áudio
 manifest.webmanifest Informações de aplicativo web
 icon.svg            Ícone
