@@ -39,7 +39,7 @@ function stop(){
  status('Modo teste pausado. Você pode testar uma frase sem o microfone.');
  render();
 }
-function addResult(original,translated,error){
+function addResult(original,translated,error,translationMs=null){
  const empty=ui.results.querySelector('.solo-empty');if(empty)empty.remove();
  const card=document.createElement('div');
  card.className='solo-result'+(error?' solo-error':'');
@@ -47,7 +47,9 @@ function addResult(original,translated,error){
  const b=document.createElement('p');b.textContent=original;
  const c=document.createElement('small');c.textContent=error?'ERRO':'TRADUÇÃO';
  const d=document.createElement('strong');d.textContent=translated;
- card.append(a,b,c,d);ui.results.prepend(card);
+ card.append(a,b,c,d);
+ if(Number.isFinite(translationMs) && translationMs>=0){const latency=document.createElement('small');latency.className='solo-latency';latency.textContent='Tempo de tradução: '+(translationMs/1000).toFixed(2)+' s (não inclui reconhecer a fala nem reproduzir a voz)';card.append(latency);}
+ ui.results.prepend(card);
  while(ui.results.children.length>8)ui.results.lastElementChild.remove();
 }
 async function translate(text,from,to){
@@ -76,9 +78,9 @@ function speak(text,language,complete){
  let finished=false;
  const synth=window.speechSynthesis;
  const u=new SpeechSynthesisUtterance(text);
- s.utterance=u;u.lang=language;u.rate=.94;
+ s.utterance=u;u.lang=language;u.rate=window.DuoVoiceSettings?.rate() ?? .94;
  const voices=synth.getVoices();
- u.voice=voices.find(v=>v.lang.toLowerCase()===language.toLowerCase()) ||
+ u.voice=window.DuoVoiceSettings?.voice(language) || voices.find(v=>v.lang.toLowerCase()===language.toLowerCase()) ||
   voices.find(v=>v.lang.toLowerCase().startsWith(language.slice(0,2).toLowerCase())) || null;
  let timeout;
  const finish=(erro)=>{
@@ -108,6 +110,11 @@ function startCapture(){
  rec.interimResults=false;
  rec.maxAlternatives=1;
  rec.onstart=()=>{if(s.rec===rec)status('Ouvindo '+languages[ui.source.value].name+'... reproduza uma fala perto do celular.');};
+ rec.onspeechend=()=>{
+  if(s.enabled && s.rec===rec && window.DuoVoiceSettings?.fast()){
+   try{rec.stop();}catch(e){}
+  }
+ };
  rec.onresult=e=>{
   if(s.rec!==rec || !s.enabled)return;
   for(let i=e.resultIndex;i<e.results.length;i++){
@@ -140,10 +147,12 @@ async function process(input){
  s.busy=true;const epoch=s.epoch;
  stopCapture();render();status('Traduzindo frase...');
  try{
+  const startTranslate=performance.now();
   const out=await translate(original,ui.source.value,target());
+  const translationMs=Math.round(performance.now()-startTranslate);
   if(epoch!==s.epoch)return;
   s.last={text:out,lang:target()};
-  addResult(original,out,false);
+  addResult(original,out,false,translationMs);
   status('Tradução concluída. Reproduzindo em '+languages[target()].name+'...');
   render();
   speak(out,target(),()=>{
