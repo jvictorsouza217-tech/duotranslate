@@ -98,7 +98,7 @@ export default {
   let data;
   try{data=await result.json();}catch(e){return json({error:'Resposta inválida do Gemini.'},502);}
   const translation=(data?.candidates?.[0]?.content?.parts||[])
-   .filter(p=>typeof p?.text==='string').map(p=>p.text).join('').trim();
+   .filter(p=>typeof p?.text==='string' && p.thought!==true).map(p=>p.text).join('').trim();
   if(!translation)return json({error:'A IA não retornou uma tradução. Tente frase diferente.'},422);
   return json({translation:translation.slice(0,1000),model,upstreamMs:Date.now()-started});
  }
