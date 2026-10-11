@@ -53,6 +53,7 @@ function addResult(original,translated,error,translationMs=null){
  while(ui.results.children.length>8)ui.results.lastElementChild.remove();
 }
 async function translate(text,from,to){
+ if(window.DuoAI?.enabled())return window.DuoAI.translate(text,from,to);
  const url=new URL('https://api.mymemory.translated.net/get');
  url.searchParams.set('q',text);
  url.searchParams.set('langpair',languages[from].code+'|'+languages[to].code);
