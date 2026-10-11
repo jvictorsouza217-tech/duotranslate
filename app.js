@@ -136,7 +136,7 @@ function useConnection(conn){
    if(data.target!==state.language)return;
    const translated=data.translation.trim().slice(0,600);
    if(!translated)return;
-   bubble('theirs',String(data.original||'').slice(0,600),translated);
+   bubble('theirs',String(data.original||'').slice(0,600),translated,false,Number(data.translationMs));
    state.queue.push({text:translated,lang:state.language});playQueue();
   }
  });
@@ -147,7 +147,7 @@ function useConnection(conn){
  });
  conn.on('error',()=>notify('Falha na comunicação entre celulares.',true));
 }
-function bubble(side,original,translation,error=false){
+function bubble(side,original,translation,error=false,translationMs=null){
  const empty=el.messages.querySelector('.empty-messages');
  if(empty)empty.remove();
  const node=document.createElement('div');node.className='bubble '+side;
@@ -156,7 +156,9 @@ function bubble(side,original,translation,error=false){
  const line=document.createElement('div');line.className='transcript';line.textContent=original;
  const result=document.createElement('div');result.className='translation'+(error?' failed':'');
  result.textContent=(error?'⚠ ':'↳ ')+translation;
- node.append(heading,line,result);el.messages.appendChild(node);
+ node.append(heading,line,result);
+ if(Number.isFinite(translationMs) && translationMs>=0){const measure=document.createElement('small');measure.textContent='Tradução: '+(translationMs/1000).toFixed(2)+' s (sem incluir reconhecimento e voz)';measure.className='translation-measure';node.append(measure);}
+ el.messages.appendChild(node);
  while(el.messages.children.length>35)el.messages.firstElementChild.remove();
  el.messages.scrollTop=el.messages.scrollHeight;
 }
@@ -204,11 +206,13 @@ function phrase(text){
   if(session!==state.session || !connected())return;
   status('Traduzindo...');
   try{
+   const translationStart=performance.now();
    const result=await translate(original,state.language,state.other);
+   const translationMs=Math.round(performance.now()-translationStart);
    if(session!==state.session || !connected())return;
-   if(!transmit({type:'speech',original:original,translation:result,target:state.other}))
+   if(!transmit({type:'speech',original:original,translation:result,target:state.other,translationMs}))
     throw Error('Não foi possível enviar a tradução.');
-   bubble('mine',original,result);
+   bubble('mine',original,result,false,translationMs);
    status(state.listen?'Ouvindo...':'Tradução enviada ao outro celular.');
   }catch(e){
    if(session!==state.session)return;
@@ -226,6 +230,11 @@ function startRecognition(){
   instance.lang=state.language;instance.continuous=false;
   instance.interimResults=false;instance.maxAlternatives=1;
   instance.onstart=()=>{if(state.instance===instance)state.recognizing=true;};
+  instance.onspeechend=()=>{
+   if(state.instance===instance && state.listen && window.DuoVoiceSettings?.fast()){
+    try{instance.stop();}catch(e){}
+   }
+  };
   instance.onresult=e=>{
    if(state.instance!==instance || !state.listen)return;
    for(let i=e.resultIndex;i<e.results.length;i++){
@@ -261,9 +270,9 @@ function speak(text,lang,done){
  let finished=false;
  const end=()=>{if(finished)return;finished=true;clearTimeout(watchdog);done();};
  const utterance=new SpeechSynthesisUtterance(text);
- utterance.lang=lang;utterance.rate=1;
+ utterance.lang=lang;utterance.rate=window.DuoVoiceSettings?.rate() ?? 1;
  const voices=window.speechSynthesis.getVoices();
- utterance.voice=voices.find(v=>v.lang.toLowerCase()===lang.toLowerCase()) ||
+ utterance.voice=window.DuoVoiceSettings?.voice(lang) || voices.find(v=>v.lang.toLowerCase()===lang.toLowerCase()) ||
   voices.find(v=>v.lang.toLowerCase().startsWith(lang.slice(0,2).toLowerCase())) || null;
  utterance.onend=end;utterance.onerror=end;
  const watchdog=setTimeout(end,Math.min(45000,Math.max(7000,text.length*190)));
