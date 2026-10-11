@@ -163,6 +163,7 @@ function bubble(side,original,translation,error=false,translationMs=null){
  el.messages.scrollTop=el.messages.scrollHeight;
 }
 async function translate(text,source,target){
+ if(window.DuoAI?.enabled())return window.DuoAI.translate(text,source,target);
  if(source===target)return text;
  const chunks=[];
  let remaining=text.trim();
