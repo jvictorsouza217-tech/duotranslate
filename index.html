@@ -1,0 +1,84 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="theme-color" content="#0c1122">
+  <meta name="description" content="Protótipo de tradução por voz entre dois celulares: português e francês.">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" href="icon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="style.css">
+  <title>DuoTranslate · Conversa sem fronteiras</title>
+  <script src="https://unpkg.com/peerjs@1.5.5/dist/peerjs.min.js" defer></script>
+  <script src="app.js" defer></script>
+</head>
+<body>
+  <div class="glow glow-one"></div><div class="glow glow-two"></div>
+  <div class="shell">
+    <header class="topbar">
+      <a class="brand" href="./" aria-label="DuoTranslate - início"><span class="brandmark">D<span>↔</span></span><span>Duo<span class="brand-light">Translate</span></span></a>
+      <span class="version">BETA 1.0</span>
+    </header>
+
+    <main>
+      <section class="hero">
+        <div class="eyebrow"><span class="live-dot"></span> Tradução presencial em dois celulares</div>
+        <h1>Converse em sua língua.<br><em>Escute na sua língua.</em></h1>
+        <p>Você fala. O outro escuta a tradução no próprio fone. E vice-versa.</p>
+      </section>
+
+      <section class="panel" aria-labelledby="setup-title" id="setup">
+        <div class="panel-heading"><span class="step">01</span><h2 id="setup-title">Seu idioma</h2></div>
+        <div class="language-picker" role="group" aria-label="Idioma que você fala">
+          <button type="button" class="language selected" data-lang="pt-BR" aria-pressed="true"><span class="flag">🇧🇷</span><span>Português</span><small>Brasil</small></button>
+          <button type="button" class="language" data-lang="fr-FR" aria-pressed="false"><span class="flag">🇫🇷</span><span>Français</span><small>France</small></button>
+        </div>
+        <p class="hint">Escolha a língua <strong>que você fala</strong>, não a que deseja ouvir. O app traduz para a língua do outro celular.</p>
+      </section>
+
+      <section class="panel" id="connectPanel" aria-labelledby="room-title">
+        <div class="panel-heading"><span class="step">02</span><h2 id="room-title">Conectar os celulares</h2></div>
+        <div id="roomSetup">
+          <button id="createBtn" class="primary-btn" type="button"><span>✦</span> Criar uma sala</button>
+          <div class="or"><span>ou entre na sala criada no outro celular</span></div>
+          <div class="join-row">
+            <input id="codeInput" type="text" inputmode="text" autocapitalize="characters" autocomplete="off" spellcheck="false" maxlength="8" placeholder="Código de 8 letras" aria-label="Código da sala">
+            <button id="joinBtn" class="secondary-btn" type="button">Entrar</button>
+          </div>
+        </div>
+        <div id="roomActive" class="hidden">
+          <div class="room-meta"><span id="roomLabel">Código da sala</span><span id="connectionState" class="state-pill"><span class="state-dot"></span>Aguardando</span></div>
+          <div class="room-code-row"><strong id="roomCode" class="room-code">········</strong><button type="button" id="copyBtn" class="icon-btn" aria-label="Copiar convite" title="Copiar convite">↗ Copiar convite</button></div>
+          <p class="hint" id="roomHelp">Compartilhe este código com o outro celular.</p>
+          <button type="button" id="leaveBtn" class="text-btn">Sair da sala</button>
+        </div>
+      </section>
+
+      <section class="panel listen-panel" aria-labelledby="listen-title">
+        <div class="panel-heading"><span class="step">03</span><h2 id="listen-title">Conversa ao vivo</h2><span id="micBadge" class="mic-badge">Microfone desligado</span></div>
+        <div class="mic-orb" id="micOrb" aria-hidden="true"><span class="mic-symbol">♬</span><div class="ring ring-a"></div><div class="ring ring-b"></div></div>
+        <p class="listen-status" id="listenStatus" role="status">Conecte os dois celulares para começar.</p>
+        <button type="button" class="primary-btn" id="listenBtn" disabled>🎙 Ativar conversa</button>
+        <div class="tools-row"><button type="button" id="testAudioBtn" class="tool-btn">🔊 Testar áudio do fone</button><span class="tools-info">Conecte seu Bluetooth nas configurações do celular.</span></div>
+      </section>
+
+      <section class="panel conversation" aria-labelledby="history-title">
+        <div class="panel-heading"><span class="step step-soft">✦</span><h2 id="history-title">Conversação</h2><button type="button" id="clearBtn" class="text-btn margin-left">Limpar</button></div>
+        <div id="messages" class="messages" aria-live="polite"><div class="empty-messages">As frases traduzidas aparecerão aqui.<br><span>Você não precisa olhar para a tela durante a conversa.</span></div></div>
+        <form id="textForm" class="text-form">
+          <label for="textInput">Plano B: enviar texto se o microfone não funcionar</label>
+          <div class="join-row"><input id="textInput" type="text" maxlength="400" placeholder="Escreva na língua que você fala..." aria-label="Texto a traduzir e enviar"><button type="submit" id="sendBtn" class="secondary-btn" disabled>Enviar</button></div>
+        </form>
+      </section>
+
+      <section class="privacy">
+        <h3>Antes de usar</h3>
+        <p>Este é um protótipo experimental, não testado ainda nos seus aparelhos. Use com ambos os celulares desbloqueados e o site aberto. O reconhecimento de voz pode usar serviços da Apple/Google. O texto a traduzir é enviado ao serviço externo MyMemory, que possui limite gratuito diário. A conexão entre celulares usa PeerJS/WebRTC, com servidor público para iniciar a conexão.</p>
+        <p>Os fones são conectados normalmente pelo Bluetooth do celular; o site <strong>não escolhe nem controla</strong> o dispositivo de áudio. Evite conversar sobre assuntos sensíveis durante os testes.</p>
+      </section>
+    </main>
+    <footer>Feito para conversas reais. <span>Português ↔ Francês</span></footer>
+  </div>
+  <div id="toast" class="toast hidden" role="alert"></div>
+</body>
+</html>
