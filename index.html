@@ -10,9 +10,11 @@
   <link rel="stylesheet" href="style.css">
   <link rel="stylesheet" href="solo.css">
   <link rel="stylesheet" href="voice-settings.css">
+  <link rel="stylesheet" href="ai-translation.css">
   <title>DuoTranslate · Conversa sem fronteiras</title>
   <script src="https://unpkg.com/peerjs@1.5.5/dist/peerjs.min.js" defer></script>
   <script src="voice-settings.js" defer></script>
+  <script src="ai-translation.js" defer></script>
   <script src="app.js" defer></script>
   <script src="solo.js" defer></script>
 </head>
@@ -21,7 +23,7 @@
   <div class="shell">
     <header class="topbar">
       <a class="brand" href="./" aria-label="DuoTranslate - início"><span class="brandmark">D<span>↔</span></span><span>Duo<span class="brand-light">Translate</span></span></a>
-      <span class="version">BETA 1.2</span>
+      <span class="version">BETA 1.3</span>
     </header>
 
     <main>
@@ -29,6 +31,26 @@
         <div class="eyebrow"><span class="live-dot"></span> Tradução presencial em dois celulares</div>
         <h1>Converse em sua língua.<br><em>Escute na sua língua.</em></h1>
         <p>Você fala. O outro escuta a tradução no próprio fone. E vice-versa.</p>
+      </section>
+
+      <section class="panel ai-panel" id="aiPanel" aria-labelledby="aiTitle">
+        <div class="panel-heading"><span class="step">✦</span><h2 id="aiTitle">Tradutor por inteligência artificial</h2><span class="mic-badge">BETA · GRÁTIS</span></div>
+        <p class="ai-provider-note">Compare a tradução tradicional com uma IA que entende expressões e contexto. A voz e o microfone continuam iguais; o que muda é o tradutor de texto.</p>
+        <label class="ai-provider-label" for="translationProvider">Motor de tradução</label>
+        <select class="ai-select" id="translationProvider">
+          <option value="mymemory">MyMemory — atual, pronto para usar</option>
+          <option value="gemini">Gemini Flash-Lite — IA gratuita (precisa ativar)</option>
+        </select>
+        <div id="aiSetupFields" class="ai-fields hidden">
+          <p><strong>Configuração necessária uma única vez:</strong> o Gemini só funciona depois de publicar um pequeno proxy na Cloudflare. A chave privada fica protegida nesse proxy, nunca neste site público.</p>
+          <label class="ai-provider-label" for="aiWorkerUrl">Endereço público do seu Cloudflare Worker (HTTPS)</label>
+          <input class="ai-input" id="aiWorkerUrl" type="url" inputmode="url" autocomplete="off" placeholder="https://duotranslate-ai.sua-conta.workers.dev">
+          <label class="ai-provider-label" for="aiWorkerPin">Seu código de acesso privado do Worker</label>
+          <input class="ai-input" id="aiWorkerPin" type="password" autocomplete="off" placeholder="Código que você escolheu no Cloudflare">
+          <button class="ai-test" id="aiTestBtn" type="button">✦ Testar IA com uma frase em francês</button>
+          <p class="ai-warning">No plano gratuito, frases enviadas ao Gemini podem ser usadas para melhorar serviços do Google. Não envie conversas confidenciais. Seu código de acesso fica apenas na sessão deste navegador.</p>
+        </div>
+        <p class="ai-status" id="aiSetupStatus" role="status">MyMemory selecionado.</p>
       </section>
 
       <section class="panel solo-panel" aria-labelledby="solo-title" id="solo">
