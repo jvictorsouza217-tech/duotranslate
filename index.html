@@ -8,16 +8,18 @@
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="icon" href="icon.svg" type="image/svg+xml">
   <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="solo.css">
   <title>DuoTranslate · Conversa sem fronteiras</title>
   <script src="https://unpkg.com/peerjs@1.5.5/dist/peerjs.min.js" defer></script>
   <script src="app.js" defer></script>
+  <script src="solo.js" defer></script>
 </head>
 <body>
   <div class="glow glow-one"></div><div class="glow glow-two"></div>
   <div class="shell">
     <header class="topbar">
       <a class="brand" href="./" aria-label="DuoTranslate - início"><span class="brandmark">D<span>↔</span></span><span>Duo<span class="brand-light">Translate</span></span></a>
-      <span class="version">BETA 1.0</span>
+      <span class="version">BETA 1.1</span>
     </header>
 
     <main>
@@ -25,6 +27,26 @@
         <div class="eyebrow"><span class="live-dot"></span> Tradução presencial em dois celulares</div>
         <h1>Converse em sua língua.<br><em>Escute na sua língua.</em></h1>
         <p>Você fala. O outro escuta a tradução no próprio fone. E vice-versa.</p>
+      </section>
+
+      <section class="panel solo-panel" aria-labelledby="solo-title" id="solo">
+        <div class="panel-heading solo-heading"><span class="step">★</span><div><h2 id="solo-title">Modo teste individual</h2><p class="solo-kicker">Um celular · sem sala · versão 1.1</p></div></div>
+        <p class="solo-intro">Teste a tradução sozinho antes de conversar com outra pessoa. O celular escuta francês e lê a tradução em português, ou faz o inverso.</p>
+        <label class="solo-label" for="soloSource">Idioma que o celular vai ouvir</label>
+        <select id="soloSource" class="solo-select"><option value="fr-FR">🇫🇷 Francês → Português 🇧🇷</option><option value="pt-BR">🇧🇷 Português → Francês 🇫🇷</option></select>
+        <div class="solo-options">
+          <button type="button" id="soloToggle" class="primary-btn">🎙 Começar a ouvir</button>
+          <button type="button" id="soloSample" class="solo-secondary">▶ Testar frase de exemplo</button>
+        </div>
+        <p id="soloStatus" class="solo-status" role="status">Escolha um teste: ouvir pelo microfone ou traduzir uma frase.</p>
+        <p class="solo-tip" id="soloTip"><strong>Teste real de áudio:</strong> coloque francês tocando na TV, no PC ou em outro aparelho, perto do microfone. O site não captura automaticamente o som interno de vídeos no mesmo telefone. Mantenha a tela ligada.</p>
+        <form id="soloForm" class="solo-form">
+          <label for="soloText" class="solo-label">Ou escreva qualquer frase para testar</label>
+          <div class="join-row"><input id="soloText" type="text" maxlength="350" placeholder="Digite uma frase em francês..." aria-label="Frase para traduzir"><button class="secondary-btn" type="submit">Traduzir</button></div>
+        </form>
+        <div id="soloResults" class="solo-history" aria-live="polite"><div class="solo-empty">Suas traduções de teste aparecerão aqui.</div></div>
+        <button id="soloReplay" type="button" class="solo-secondary solo-replay" disabled>🔊 Repetir última tradução</button>
+        <p class="solo-footer">O texto é enviado ao serviço MyMemory; a fala pode ser processada pelo navegador. Não use dados confidenciais. A leitura em voz alta depende das permissões e do áudio Bluetooth do celular.</p>
       </section>
 
       <section class="panel" aria-labelledby="setup-title" id="setup">
