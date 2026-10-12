@@ -1,4 +1,4 @@
-# DuoTranslate — protótipo 1.2
+# DuoTranslate — protótipo 1.4
 
 **Objetivo:** duas pessoas se comunicarem em português (Brasil) e francês (França), cada uma usando **seu próprio celular e fone Bluetooth comum**. A pessoa fala ao microfone do celular/fone; o outro aparelho reproduz a versão traduzida em voz alta.
 
@@ -13,6 +13,22 @@
 - Leitura em voz alta da tradução recebida com `speechSynthesis` — deve usar o dispositivo de saída padrão do telefone, incluindo Bluetooth quando roteado pelo sistema.
 - Botões para testar o áudio e para digitar frases manualmente se o reconhecimento de voz não funcionar.
 - Ao reproduzir uma tradução, o app tenta pausar temporariamente a captação para evitar que o áudio seja novamente traduzido.
+
+## Versão 1.4 — histórico, exportação e avaliação
+
+**Backup:** a versão anterior à atualização 1.4 está preservada em \`stable-v1.3\`.
+
+**Histórico local:** painel "Histórico local e qualidade". Salva automaticamente, a partir desta versão, frases, tradução, idioma de origem/destino, mecanismo, modo (individual ou em dupla), data e duração medida da chamada do tradutor (não inclui reconhecimento de fala nem voz). É possível pausar a gravação e apagar os registros; o limite é de 250 itens, com os mais antigos substituídos. Não contém áudio. **Não é sincronizado entre computador/Android/iPhone**, nem retroativamente recupera traduções antigas que só existam em PDFs.
+
+**Exportar:** botões JSON (inclui comparação e análise) ou CSV (abre em planilhas, com UTF-8 e aspas para texto). Os arquivos contêm as frases e devem ser compartilhados com cuidado.
+
+**Comparar tradutores (opcional):** em cada item salvo, o botão permite comparar Gemini e MyMemory. Se a tradução já veio de um dos motores, a resposta e o tempo são reaproveitados para reduzir chamadas extras; consulta apenas o outro motor. Os resultados e tempos ficam registrados no próprio item. A comparação não é um julgamento automático de qual é melhor: avalie a fidelidade e a naturalidade.
+
+**Analisar qualidade com IA (opcional):** ao tocar, o original reconhecido e a tradução são enviados ao **Gemini via Cloudflare**, usando as credenciais configuradas no painel do aplicativo. A IA retorna um parecer de fidelidade, naturalidade, problemas concretos e sugestão de correção. O parecer é orientativo: **não confere o áudio original** nem garante tradução perfeita. Cada análise gasta uma requisição da cota gratuita.
+
+**Privacidade e segurança:** o histórico está no localStorage do navegador (não criptografado pelo aplicativo), potencialmente acessível a pessoas com acesso ao perfil do navegador e scripts da mesma origem. Não use com dados confidenciais. Desativar a gravação não apaga registros antigos. Excluir o histórico local não apaga exports já baixados nem registros de processamento de serviços externos. O PIN e a API Key não são escritos no histórico. Se o armazenamento for bloqueado por privacidade/aba anônima, os registros podem não persistir.
+
+**Importante:** essa atualização não muda os estilos de voz, as opções da voz sintetizada, as funções de conversa ou a estrutura PWA. A melhoria das vozes e do layout fica para uma versão futura, depois dos testes em celular.
 
 ## Versão 1.2: primeiro melhorias gratuitas
 
