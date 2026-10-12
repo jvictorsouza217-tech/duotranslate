@@ -3,5 +3,15 @@
   "name": "duotranslate-ai",
   "main": "cloudflare/gemini-worker.js",
   "compatibility_date": "2026-10-12",
-  "workers_dev": true
+  "workers_dev": true,
+  "ratelimits": [
+    {
+      "name": "AI_RATE_LIMITER",
+      "namespace_id": "1426",
+      "simple": {
+        "limit": 40,
+        "period": 60
+      }
+    }
+  ]
 }
