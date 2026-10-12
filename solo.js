@@ -145,7 +145,7 @@ function startCapture(){
 async function process(input){
  const original=String(input||'').trim().slice(0,350);
  if(!original || s.busy)return;
- if(ui.source.value===ui.target.value){status('Escolha idiomas diferentes.');return;}
+ if(ui.source.value===ui.target.value){status('Idioma de origem e de destino iguais. Escolha duas línguas diferentes; nenhuma tradução foi enviada.');return;}
  s.busy=true;const epoch=s.epoch;
  stopCapture();render();status('Traduzindo frase...');
  try{
@@ -155,6 +155,7 @@ async function process(input){
   if(epoch!==s.epoch)return;
   s.last={text:out,lang:target()};
   addResult(original,out,false,translationMs);
+  const direction=$('soloDirection');if(direction)direction.textContent=languages[ui.source.value].name+' → '+languages[target()].name;
   window.DuoHistory?.add({mode:'solo',direction:'sent',source:ui.source.value,target:target(),original,translation:out,translationMs,provider:window.DuoAI?.label()||'MyMemory'});
   status('Tradução concluída. Reproduzindo em '+languages[target()].name+'...');
   render();
@@ -181,18 +182,20 @@ ui.toggle.addEventListener('click',()=>{
  s.enabled=true;s.epoch++;s.errors=0;render();
  status('Pedindo permissão para o microfone...');startCapture();
 });
-function changedLanguage(which){
- if(ui.source.value===ui.target.value){
-  if(which==='source')ui.target.value=ui.source.value==='pt-BR'?'fr-FR':'pt-BR';
-  else ui.source.value=ui.target.value==='pt-BR'?'fr-FR':'pt-BR';
- }
+function changedLanguage(){
+ // A seleção do usuário é soberana: nunca reverter silenciosamente ao par PT/FR.
  if(s.enabled)stop();
  s.last=null;ui.replay.disabled=true;
  ui.input.placeholder='Digite uma frase em '+(languages[ui.source.value]?.name||'outro idioma')+'...';
- status('Escolha um teste: ouvir pelo microfone ou traduzir uma frase.');
+ const same=ui.source.value===ui.target.value;
+ status(same
+  ?'Origem e destino são iguais. Escolha idiomas diferentes antes de traduzir.'
+  :'Direção selecionada: '+languages[ui.source.value].name+' → '+languages[ui.target.value].name+'.');
+ const direction=$('soloDirection');
+ if(direction)direction.textContent=languages[ui.source.value].name+' → '+languages[ui.target.value].name+(same?' · escolha idiomas diferentes':'');
 }
-ui.source.addEventListener('change',()=>changedLanguage('source'));
-ui.target.addEventListener('change',()=>changedLanguage('target'));
+ui.source.addEventListener('change',changedLanguage);
+ui.target.addEventListener('change',changedLanguage);
 ui.sample.addEventListener('click',()=>process(example()));
 ui.form.addEventListener('submit',e=>{e.preventDefault();if(s.busy)return;const t=ui.input.value.trim();if(t)process(t);});
 ui.replay.addEventListener('click',()=>{
@@ -212,5 +215,5 @@ ui.replay.addEventListener('click',()=>{
  if(button)button.addEventListener('click',()=>{if(s.enabled || s.busy)stop();},{capture:true});
 });
 window.addEventListener('pagehide',()=>{s.enabled=false;s.epoch++;stopCapture();});
-render();
+render();changedLanguage();
 })();
