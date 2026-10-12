@@ -624,7 +624,7 @@ function fEvent(kind,params){const win=$('duoRealFrame').contentWindow;return ne
 function applyPrefsToEmbeddedBeta(data){const doc=integrateFrameDoc();if(!doc)return false;
 if(!doc.getElementById('duoIntegration25')){const st=doc.createElement('style');st.id='duoIntegration25';st.textContent=FRAME_CSS;doc.head.append(st)}
 const lang=doc.querySelector('.language[data-lang="'+data.speak+'"]');if(lang&&!lang.classList.contains('selected'))lang.click();
-selectBeta('duoHearLanguage',data.hear);if(data.voiceURI){saveVoiceSettings(data.hear,data.voiceURI)}selectBeta('soloSource',data.speak);selectBeta('soloTarget',data.hear);selectBeta('interfaceLanguage',data.ui.split('-')[0]);selectBeta('voiceOtherLang',data.hear);
+selectBeta('duoHearLanguage',data.hear);if(data.voiceURI&&!Object.prototype.hasOwnProperty.call(voiceSettings().voices||{},data.hear)){saveVoiceSettings(data.hear,data.voiceURI)}selectBeta('soloSource',data.speak);selectBeta('soloTarget',data.hear);selectBeta('interfaceLanguage',data.ui.split('-')[0]);selectBeta('voiceOtherLang',data.hear);
 if(!intState.frameObserver){intState.frameObserver=new MutationObserver(()=>requestAnimationFrame(resizeIntFrame));intState.frameObserver.observe(doc.body,{childList:true,attributes:true,subtree:true,characterData:true})}
 intState.frameReady=true;showFrameRoute();if(['nearby','listening'].includes(intState.view))applyOnePhone(false);return true;}
 function resizeIntFrame(){if(!intState.frameReady)return;const doc=integrateFrameDoc();if(!doc)return;const f=$('duoRealFrame');const min=420;const natural=Math.max(doc.body.scrollHeight,doc.documentElement.scrollHeight);const h=Math.max(min,Math.min(natural+20,3600));if(Math.abs((parseInt(f.style.height)||0)-h)>8)f.style.height=h+'px';}
@@ -687,7 +687,7 @@ function renderPhrasePanel(){
  $('intPhraseStats').textContent='Ocorrências de frases rápidas: '+(Number(book?.stats()?.hits)||0)+' (apenas neste navegador).';
 }
 function refreshQuickVoice(){
- const target=['nearby','listening','solo'].includes(intState.view)?$('oneTarget').value:(intState.view==='languages'?$('intHear').value:intState.data.hear);
+ const target=['nearby','listening'].includes(intState.view)?$('oneTarget').value:(intState.view==='languages'?$('intHear').value:intState.data.hear);
  if(!$('quickVoiceLanguage').options.length)$('quickVoiceLanguage').innerHTML=opts;
  $('quickVoiceLanguage').value=target||'fr-FR';
  fillQuickVoiceList();
