@@ -746,6 +746,31 @@ function renderPhrasePanel(){
  :'Exemplos disponíveis quando o tradutor carregar.';
  $('intPhraseStats').textContent='Ocorrências de frases rápidas: '+(Number(book?.stats()?.hits)||0)+' (apenas neste navegador).';
 }
+const QUICK_VOICE_LOCALES={
+ pt:['ÁUDIO DA TRADUÇÃO','Voz natural ElevenLabs','Usa créditos','Sua tradução será lida com a voz escolhida. Você pode trocá-la aqui mesmo.','Idioma em que vou ouvir','Voz selecionada','Trocar voz','▶ Ouvir teste','Usar esta voz'],
+ en:['TRANSLATION AUDIO','Natural ElevenLabs voice','Uses credits','Hear translations in your chosen voice. You can change it here.','I want to hear','Selected voice','Change voice','▶ Test voice','Use this voice'],
+ fr:['AUDIO DE TRADUCTION','Voix naturelle ElevenLabs','Utilise des crédits','Écoutez la traduction avec la voix choisie. Vous pouvez la changer ici.','Langue à écouter','Voix choisie','Changer de voix','▶ Tester la voix','Utiliser cette voix'],
+ es:['AUDIO DE TRADUCCIÓN','Voz natural ElevenLabs','Usa créditos','Escucha las traducciones con la voz elegida. Puedes cambiarla aquí.','Idioma que quiero escuchar','Voz seleccionada','Cambiar voz','▶ Probar voz','Usar esta voz'],
+ nl:['VERTAALDE AUDIO','Natuurlijke ElevenLabs-stem','Gebruikt credits','Luister naar vertalingen met de gekozen stem. Je kunt die hier wijzigen.','Taal die ik wil horen','Gekozen stem','Stem wijzigen','▶ Stem testen','Deze stem gebruiken'],
+ de:['ÜBERSETZUNGSAUDIO','Natürliche ElevenLabs-Stimme','Verbraucht Guthaben','Höre die Übersetzung mit der gewählten Stimme. Du kannst sie hier ändern.','Sprache, die ich hören möchte','Gewählte Stimme','Stimme ändern','▶ Stimme testen','Diese Stimme verwenden'],
+ it:['AUDIO DELLA TRADUZIONE','Voce naturale ElevenLabs','Usa crediti','Ascolta la traduzione con la voce scelta. Puoi cambiarla qui.','Lingua che voglio ascoltare','Voce selezionata','Cambia voce','▶ Prova voce','Usa questa voce'],
+ ar:['صوت الترجمة','صوت طبيعي من ElevenLabs','يستهلك رصيدًا','استمع إلى الترجمة بالصوت الذي تختاره. يمكنك تغييره هنا.','اللغة التي أريد سماعها','الصوت المحدد','تغيير الصوت','▶ تجربة الصوت','استخدم هذا الصوت'],
+ zh:['翻译语音','ElevenLabs 自然语音','消耗额度','使用所选语音收听翻译，也可随时更换。','收听语言','已选语音','更换语音','▶ 试听','使用此语音'],
+ pl:['DŹWIĘK TŁUMACZENIA','Naturalny głos ElevenLabs','Zużywa kredyty','Słuchaj tłumaczenia wybranym głosem. Możesz go tutaj zmienić.','Język odsłuchu','Wybrany głos','Zmień głos','▶ Test głosu','Użyj tego głosu'],
+ ro:['AUDIO TRADUCERE','Voce naturală ElevenLabs','Consumă credite','Ascultă traducerea cu vocea aleasă. O poți schimba aici.','Limba pe care o ascult','Voce selectată','Schimbă vocea','▶ Testează vocea','Folosește această voce'],
+ uk:['АУДІО ПЕРЕКЛАДУ','Природний голос ElevenLabs','Витрачає кредити','Слухайте переклад вибраним голосом. Його можна змінити тут.','Мова прослуховування','Вибраний голос','Змінити голос','▶ Перевірити голос','Використати голос'],
+ ru:['АУДИОПЕРЕВОД','Естественный голос ElevenLabs','Расходует кредиты','Слушайте перевод выбранным голосом. Его можно изменить здесь.','Язык прослушивания','Выбранный голос','Сменить голос','▶ Проверить голос','Использовать голос'],
+ tr:['ÇEVİRİ SESİ','Doğal ElevenLabs sesi','Kredi kullanır','Çeviriyi seçtiğiniz sesle dinleyin. Sesi buradan değiştirebilirsiniz.','Duymak istediğim dil','Seçili ses','Sesi değiştir','▶ Sesi dene','Bu sesi kullan']
+};
+function localizeQuickVoice(){
+ const lang=(intState.data?.ui||'pt-BR').split('-')[0],t=QUICK_VOICE_LOCALES[lang]||QUICK_VOICE_LOCALES.en;
+ $('quickVoicePanel').querySelector('.duo-voice-header small').textContent=t[0];
+ $('voiceSimpleTitle').textContent=t[1];$('quickVoicePanel').querySelector('.duo-voice-credit').textContent=t[2];
+ $('quickVoicePanel').querySelector('.duo-voice-desc').textContent=t[3];
+ const labels=$('quickVoicePanel').querySelectorAll('.duo-voice-controls label');
+ labels[0].textContent=t[4];labels[1].textContent=t[5];
+ $('quickVoiceBrowse').textContent=t[6];$('quickVoiceTry').textContent=t[7];$('quickVoiceApply').textContent=t[8];
+}
 function quickVoiceTarget(){
  return ['nearby','listening'].includes(intState.view)?$('oneTarget').value:(intState.view==='languages'?$('intHear').value:intState.data.hear);
 }
@@ -753,6 +778,7 @@ function quickVoiceDirectory(){
  try{const v=JSON.parse(localStorage.getItem('duotranslate.eleven.voices.v29')||'[]');return Array.isArray(v)?v:[]}catch(e){return []}
 }
 function refreshQuickVoice(){
+ localizeQuickVoice();
  const lang=quickVoiceTarget()||'fr-FR',cfg=premiumStored(),chosen=cfg.voices?.[lang]||'',dir=quickVoiceDirectory();
  $('quickVoiceLang').textContent=langs.find(v=>v[0]===lang)?.[1]||lang;
  const select=$('quickPremiumVoiceSelect');select.replaceChildren();
