@@ -137,6 +137,7 @@ function useConnection(conn){
    const translated=data.translation.trim().slice(0,600);
    if(!translated)return;
    bubble('theirs',String(data.original||'').slice(0,600),translated,false,Number(data.translationMs));
+   window.DuoHistory?.add({mode:'duo',direction:'received',source:state.other,target:state.language,original:String(data.original||'').slice(0,600),translation:translated,translationMs:data.translationMs,provider:String(data.provider||'Outro aparelho')});
    state.queue.push({text:translated,lang:state.language});playQueue();
   }
  });
@@ -211,9 +212,10 @@ function phrase(text){
    const result=await translate(original,state.language,state.other);
    const translationMs=Math.round(performance.now()-translationStart);
    if(session!==state.session || !connected())return;
-   if(!transmit({type:'speech',original:original,translation:result,target:state.other,translationMs}))
+   if(!transmit({type:'speech',original:original,translation:result,target:state.other,translationMs,provider:window.DuoAI?.label()||'MyMemory'}))
     throw Error('Não foi possível enviar a tradução.');
    bubble('mine',original,result,false,translationMs);
+   window.DuoHistory?.add({mode:'duo',direction:'sent',source:state.language,target:state.other,original,translation:result,translationMs,provider:window.DuoAI?.label()||'MyMemory'});
    status(state.listen?'Ouvindo...':'Tradução enviada ao outro celular.');
   }catch(e){
    if(session!==state.session)return;
