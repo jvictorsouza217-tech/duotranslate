@@ -950,7 +950,7 @@ $('trustedForget').onclick=()=>{localStorage.removeItem(TRUSTED_CODES_KEY);
  window.DuoAccess?.forget();
  updateTrustedMessage('Códigos guardados apagados. Sua sessão atual não foi interrompida.')};
 updateTrustedMessage();
-const previouslyCompleted=persistedIntegration();if(previouslyCompleted)enterIntegrated(previouslyCompleted,true);
+const previouslyCompleted=persistedIntegration();if(previouslyCompleted&&new URLSearchParams(location.search).get('inicio')!=='1')enterIntegrated(previouslyCompleted,true);
 window.DuoAccess?.renderStatus();
 })();
 </script>
