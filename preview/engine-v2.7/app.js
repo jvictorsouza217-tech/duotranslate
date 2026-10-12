@@ -273,6 +273,12 @@ function startRecognition(){
  }catch(e){console.warn(e);notify('Não foi possível iniciar o microfone neste navegador.',true);stopMic();}
 }
 function speak(text,lang,done){
+ if(window.DuoPremiumVoice?.enabled(lang)){
+  window.DuoPremiumVoice.speak(text,lang).then(done).catch(error=>{notify("ElevenLabs indisponível: "+String(error?.message||error)+". Usando voz do aparelho.",true);speakLocal(text,lang,done);});return;
+ }
+ speakLocal(text,lang,done);
+}
+function speakLocal(text,lang,done){
  if(!window.speechSynthesis || !window.SpeechSynthesisUtterance){
   notify('Voz sintetizada indisponível.',true);done();return;
  }
