@@ -350,6 +350,7 @@ body.integrated-active .mode-choice{touch-action:pan-y}
         <p>Altere a voz que você quer ouvir, sem sair da conversa. Vozes gratuitas variam conforme o celular. ElevenLabs é opcional, mediante configuração.</p>
         <div class="int-fieldrow">
           <div><label for="quickVoiceLanguage">Idioma do áudio</label><select class="int-select" id="quickVoiceLanguage"></select></div>
+          <div><label for="quickVoiceEngine">Tipo de voz</label><select class="int-select" id="quickVoiceEngine"><option value="device">Gratuita · do aparelho</option><option value="eleven">ElevenLabs · natural (usa créditos)</option></select></div>
           <div><label for="quickVoiceChoice">Voz disponível no aparelho</label><select class="int-select" id="quickVoiceChoice"></select></div>
           <div><label for="quickVoiceRate">Velocidade <span id="quickVoiceRateText">1.00×</span></label><input type="range" id="quickVoiceRate" min="0.75" max="1.25" step="0.05" value="1" style="width:100%;accent-color:#7651A8"></div>
         </div>
@@ -712,13 +713,34 @@ function fillQuickVoiceList(){
  const automatic=document.createElement('option');automatic.value='';automatic.textContent='Automática (voz do aparelho)';selector.append(automatic);
  matching.forEach(v=>{const option=document.createElement('option');option.value=voiceKey(v);option.textContent=v.name+' ('+v.lang+')';selector.append(option)});
  const saved=voiceSettings();selector.value=matching.some(v=>voiceKey(v)===saved.voices?.[lang])?saved.voices[lang]:'';
- const rate=Math.max(.75,Math.min(1.25,Number(saved.rate)||1));
+ const premium=premiumStored();$('quickVoiceEngine').value=premium.enabled&&premium.voices?.[lang]?'eleven':'device';const rate=Math.max(.75,Math.min(1.25,Number(saved.rate)||1));
  $('quickVoiceRate').value=String(rate);$('quickVoiceRateText').textContent=rate.toFixed(2)+'×';
  $('quickVoiceHelp').textContent=matching.length?matching.length+' voz(es) disponíveis para este idioma.':'Nenhuma voz específica neste aparelho. Você pode testar a automática.';
+}
+function setQuickEngine(which){
+ const lang=$('quickVoiceLanguage').value;
+ const cfg=premiumStored();
+ if(which==='eleven'){
+  if(!cfg.url||!cfg.voices?.[lang]||!sessionStorage.getItem('duotranslate.voice.pin.session')){
+   $('quickVoiceEngine').value='device';
+   $('quickVoiceHelp').textContent='Configure primeiro o Worker e escolha a voz ElevenLabs para '+lang+' em Configurações → Vozes.';
+   return;
+  }
+  if(!window.confirm('A voz ElevenLabs consome créditos a cada tradução. Ativar para esta conversa?')){
+   $('quickVoiceEngine').value=cfg.enabled?'eleven':'device';return;
+  }
+  cfg.enabled=true;
+ }else cfg.enabled=false;
+ localStorage.setItem('duotranslate.premium.voice.v1',JSON.stringify(cfg));
+ const pin=sessionStorage.getItem('duotranslate.voice.pin.session')||'';
+ integrateFrameDoc()?.defaultView?.DuoPremiumVoice?.configure({...cfg,pin});
+ $('quickVoiceEngine').value=cfg.enabled?'eleven':'device';
+ $('quickVoiceHelp').textContent=cfg.enabled?'ElevenLabs ativa neste navegador para os idiomas configurados; cada tradução usa créditos.':'Voz gratuita do aparelho ativa.';
 }
 function quickVoiceSample(){
  if(!window.speechSynthesis){$('quickVoiceHelp').textContent='Voz não disponível neste navegador.';return}
  const lang=$('quickVoiceLanguage').value,key=$('quickVoiceChoice').value,phrase=phrases[lang]||phrases['pt-BR'];
+ if($('quickVoiceEngine').value==='eleven'){$('quickVoiceHelp').textContent='Amostras ElevenLabs usam créditos. Abra a opção ElevenLabs para testar com confirmação.';return;}
  const utterance=new SpeechSynthesisUtterance(phrase);utterance.lang=lang;utterance.rate=Number($('quickVoiceRate').value);
  utterance.voice=voices().find(v=>voiceKey(v)===key)||null;
  utterance.onerror=()=>{$('quickVoiceHelp').textContent='Falha ao reproduzir esta voz; teste outra voz.'};
@@ -753,7 +775,8 @@ $('premiumVoiceList').onchange=()=>{$('premiumVoiceId').value=$('premiumVoiceLis
 $('premiumLanguage').onchange=()=>{$('premiumVoiceId').value=(premiumStored().voices||{})[$('premiumLanguage').value]||''};
 $('intPhraseToggle').onchange=()=>{localStorage.setItem('duotranslate.phrasebook.enabled.v1',$('intPhraseToggle').checked?'1':'0');renderPhrasePanel()};
 $('quickVoiceLanguage').onchange=fillQuickVoiceList;
-$('quickVoiceChoice').onchange=()=>{saveVoiceSettings($('quickVoiceLanguage').value,$('quickVoiceChoice').value);$('quickVoiceHelp').textContent='Voz salva e aplicada ao tradutor.'};
+$('quickVoiceEngine').onchange=()=>setQuickEngine($('quickVoiceEngine').value);
+$('quickVoiceChoice').onchange=()=>{saveVoiceSettings($('quickVoiceLanguage').value,$('quickVoiceChoice').value);$('quickVoiceHelp').textContent='Voz do aparelho salva. Se ElevenLabs estiver ativa, mude o tipo de voz acima para ouvi-la.'};
 $('quickVoiceRate').oninput=()=>{const rate=Number($('quickVoiceRate').value);$('quickVoiceRateText').textContent=rate.toFixed(2)+'×';saveVoiceSettings(null,null,rate)};
 $('quickVoiceTry').onclick=quickVoiceSample;
 $('quickVoicePremium').onclick=()=>intGo('settings','voices');
