@@ -8,6 +8,18 @@ const codes=['pt','en','fr','es','it','de','ar','zh'];
 const names={pt:'Português',en:'English',fr:'Français',es:'Español',it:'Italiano',de:'Deutsch',ar:'العربية',zh:'中文'};
 /* Cada conjunto contém pt, en, fr, es, it, de, ar, zh, nessa ordem. */
 const D={
+ footerMotto:['Feito para conversas reais.','Made for real conversations.','Conçu pour de vraies conversations.','Para conversaciones reales.','Pensato per conversazioni reali.','Für echte Gespräche gemacht.','صُنع للمحادثات الحقيقية.','为真实对话而打造。'],
+ footerLanguages:['8 idiomas · 56 combinações','8 languages · 56 combinations','8 langues · 56 combinaisons','8 idiomas · 56 combinaciones','8 lingue · 56 combinazioni','8 Sprachen · 56 Kombinationen','٨ لغات · ٥٦ مجموعة','8 种语言 · 56 种组合'],
+ soloKicker:['UM APARELHO · SEM SALA · 8 IDIOMAS','ONE DEVICE · NO ROOM · 8 LANGUAGES','UN APPAREIL · SANS SALON · 8 LANGUES','UN DISPOSITIVO · SIN SALA · 8 IDIOMAS','UN DISPOSITIVO · SENZA STANZA · 8 LINGUE','EIN GERÄT · KEIN RAUM · 8 SPRACHEN','جهاز واحد · دون غرفة · ٨ لغات','单设备 · 无房间 · 8 种语言'],
+ translateServiceGemini:['Gemini Flash-Lite — IA gratuita (requer configuração)','Gemini Flash-Lite — Free AI (setup required)','Gemini Flash-Lite — IA gratuite (configuration requise)','Gemini Flash-Lite — IA gratuita (requiere configuración)','Gemini Flash-Lite — IA gratuita (richiede configurazione)','Gemini Flash-Lite — Gratis-KI (Einrichtung nötig)','Gemini Flash-Lite — ذكاء اصطناعي مجاني (يتطلب إعداداً)','Gemini Flash-Lite — 免费 AI（需配置）'],
+ translateServiceMemory:['MyMemory — tradutor tradicional','MyMemory — traditional translation','MyMemory — traduction classique','MyMemory — traducción tradicional','MyMemory — traduzione classica','MyMemory — klassische Übersetzung','MyMemory — ترجمة تقليدية','MyMemory — 传统翻译'],
+ chooseAction:['Escolha um teste: ouvir pelo microfone ou traduzir uma frase.','Choose a test: microphone or typed sentence.','Choisissez un test : microphone ou phrase saisie.','Elige una prueba: micrófono o texto.','Scegli un test: microfono o testo.','Wähle einen Test: Mikrofon oder Text.','اختر الاختبار: ميكروفون أو جملة مكتوبة.','选择测试：麦克风或输入句子。'],
+ soloPaused:['Modo teste pausado. Você pode testar uma frase sem o microfone.','Solo test paused. You can test a sentence without the microphone.','Test individuel en pause. Vous pouvez tester une phrase sans micro.','Prueba pausada. Puedes probar una frase sin micrófono.','Test in pausa. Puoi provare una frase senza microfono.','Einzeltest pausiert. Du kannst einen Satz ohne Mikrofon testen.','الاختبار متوقف مؤقتاً. يمكنك تجربة جملة دون ميكروفون.','测试已暂停。可以不使用麦克风测试句子。'],
+ noMic:['Reconhecimento de voz não disponível neste navegador. Use a frase de exemplo.','Speech recognition is unavailable in this browser. Use a sample sentence.','Reconnaissance vocale indisponible dans ce navigateur. Utilisez une phrase exemple.','Reconocimiento de voz no disponible en este navegador. Usa una frase de ejemplo.','Riconoscimento vocale non disponibile. Usa una frase esempio.','Spracherkennung in diesem Browser nicht verfügbar. Beispielsatz verwenden.','التعرف على الكلام غير متاح بهذا المتصفح. استخدم جملة نموذجية.','此浏览器不支持语音识别，请使用示例句子。'],
+ soloDone:['Tradução concluída. Use Repetir tradução para ouvir de novo.','Translation complete. Use Replay to listen again.','Traduction terminée. Réécoutez si nécessaire.','Traducción completada. Pulsa Repetir para volver a escuchar.','Traduzione completata. Usa Ripeti per riascoltarla.','Übersetzung abgeschlossen. Zum erneuten Anhören auf Wiederholen klicken.','اكتملت الترجمة. استخدم إعادة التشغيل للاستماع مجدداً.','翻译完成。点击重播可再次收听。'],
+ connectedStatus:['Conectados! Toque em Ativar conversa em cada aparelho.','Connected! Start the conversation on each phone.','Connectés ! Démarrez la conversation sur chaque téléphone.','¡Conectados! Inicia la conversación en ambos teléfonos.','Connessi! Avvia la conversazione su entrambi i telefoni.','Verbunden! Starte das Gespräch auf beiden Handys.','تم الاتصال! ابدأ المحادثة على كل هاتف.','已连接！请在两部手机上开始对话。'],
+ connectingStatus:['Esperando o outro celular conectar...','Waiting for the other phone to connect...','En attente de l’autre téléphone...','Esperando a que se conecte el otro teléfono...','In attesa dell’altro telefono...','Warte auf das andere Handy...','بانتظار اتصال الهاتف الآخر...','正在等待另一部手机连接……'],
+ listeningStatus:['Ouvindo... fale normalmente.','Listening... speak normally.','Écoute... parlez normalement.','Escuchando... habla normalmente.','In ascolto... parla normalmente.','Höre zu... sprich normal.','أستمع... تحدث بشكل طبيعي.','正在听……请正常说话。'],
  stopDuo:['■ Parar conversa','■ Stop conversation','■ Arrêter la conversation','■ Detener conversación','■ Ferma la conversazione','■ Gespräch beenden','■ إيقاف المحادثة','■ 结束对话'],
  stopListening:['■ Parar de ouvir','■ Stop listening','■ Arrêter l’écoute','■ Dejar de escuchar','■ Ferma ascolto','■ Zuhören beenden','■ إيقاف الاستماع','■ 停止收听'],
  voiceIntro:['Escolha a voz disponível no seu dispositivo e ajuste a velocidade.','Choose an available voice on your device and adjust its speed.','Choisissez une voix disponible sur votre appareil et réglez la vitesse.','Elige una voz disponible en tu dispositivo y ajusta su velocidad.','Scegli una voce disponibile sul dispositivo e regola la velocità.','Wähle eine verfügbare Stimme und passe die Geschwindigkeit an.','اختر صوتاً متاحاً على جهازك واضبط سرعته.','选择设备可用的语音并调整语速。'],
@@ -96,6 +108,9 @@ const mapping={
  '#usagePanel .usage-status:nth-of-type(2)':'usageInfo',
  '#usagePanel .usage-status:nth-of-type(3)':'usageSafety',
  '#voicePanel .voice-settings-body > p:first-child':'voiceIntro',
+ '#solo .solo-kicker':'soloKicker',
+ '#translationProvider option[value="gemini"]':'translateServiceGemini',
+ '#translationProvider option[value="mymemory"]':'translateServiceMemory',
  '#usageTitle':'usageTitle',
  '#usagePanel .usage-stat:nth-child(1) span':'usageGemini',
  '#usagePanel .usage-stat:nth-child(2) span':'usageMemory',
@@ -159,6 +174,7 @@ const soloStart=document.getElementById('soloToggle');
 const micBadge=document.getElementById('micBadge');
 const roomLabel=document.querySelector('#roomHelp');
 const options=Array.from(select.options);
+const footnote=document.querySelector('footer');
 let locale='pt';
 function t(key){
  const i=codes.indexOf(locale);
@@ -167,7 +183,14 @@ function t(key){
 function statusTranslation(phrase){
  const key={'Microfone desligado':'micOff','Microfone ligado':'micOn','Escolha idiomas diferentes.':'chooseDifferent',
   'Traduzindo frase...':'translating','Conecte os dois celulares para começar.':'waiting','Tente novamente.':'retry',
-  'Origem e destino são iguais. Escolha idiomas diferentes antes de traduzir.':'notTranslated'}[phrase];
+  'Origem e destino são iguais. Escolha idiomas diferentes antes de traduzir.':'notTranslated',
+  'Escolha um teste: ouvir pelo microfone ou traduzir uma frase.':'chooseAction',
+  'Modo teste pausado. Você pode testar uma frase sem o microfone.':'soloPaused',
+  'Reconhecimento de voz não disponível neste navegador. Use a frase de exemplo.':'noMic',
+  'Tradução concluída. Use Repetir tradução para ouvir de novo.':'soloDone',
+  'Conectados! Toque em Ativar conversa em cada aparelho.':'connectedStatus',
+  'Esperando o outro celular conectar...':'connectingStatus',
+  'Ouvindo... fale normalmente.':'listeningStatus'}[phrase];
  return key?t(key):phrase;
 }
 function apply(next){
@@ -178,6 +201,7 @@ function apply(next){
  for(const {node,key} of nodes){if(node)node.textContent=t(key);}
  if(header){const em=header.querySelector('em');header.replaceChildren(document.createTextNode(t('heroTitle')),document.createElement('br'));const e=document.createElement('em');e.textContent=t('heroOther');header.append(e);}
  if(headerText)headerText.textContent=t('heroNote');
+ if(footnote){footnote.replaceChildren(document.createTextNode(t('footerMotto')+' '));const span=document.createElement('span');span.textContent=t('footerLanguages');footnote.append(span);}
  if(eyebrow){const dot=eyebrow.querySelector('.live-dot');eyebrow.textContent='';if(dot)eyebrow.append(dot);eyebrow.append(document.createTextNode(' '+t('eyebrow')));}
  if(empty)empty.textContent=t('noMessages');
  if(saveLabel){const input=saveLabel.querySelector('input');saveLabel.replaceChildren();if(input)saveLabel.append(input);saveLabel.append(document.createTextNode(' '+t('saveHistory')));}
