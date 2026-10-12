@@ -1,0 +1,7 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "duotranslate-ai",
+  "main": "cloudflare/gemini-worker.js",
+  "compatibility_date": "2026-10-12",
+  "workers_dev": true
+}
