@@ -190,10 +190,10 @@ body.integrated-active .mode-choice{touch-action:pan-y}
 .duo-voice-buttons button{min-height:47px}
 .duo-voice-buttons button:last-child{margin-left:auto}
 #intOnePhoneOptions:has(+ #intPremiumPanel) .int-caption{line-height:1.5}
-#intOnePhoneOptions #oneExplain{display:none}
-#intOnePhoneOptions #oneApply{display:none}
-#intOnePhoneOptions #oneStatus{display:none}
-#intOnePhoneOptions .int-actions{display:none}
+body[data-duo-int-view="listening"] #intOnePhoneOptions #oneExplain{display:none}
+body[data-duo-int-view="listening"] #intOnePhoneOptions #oneApply{display:none}
+body[data-duo-int-view="listening"] #intOnePhoneOptions #oneStatus{display:none}
+body[data-duo-int-view="listening"] #intOnePhoneOptions .int-actions{display:none}
 #intOnePhoneOptions{padding:19px 22px!important}
 #intOnePhoneOptions .int-fieldrow{margin:0!important}
 #intFrameArea{margin-top:0!important}
@@ -803,7 +803,7 @@ async function quickVoiceSample(){
  }catch(err){$('quickVoiceHelp').textContent='Não foi possível reproduzir: '+String(err?.message||err);}
 }
 function intGo(view,setting){if(intState.view==='talk'&&view!=='talk'){const d=integrateFrameDoc();const b=d?.getElementById('listenBtn');if(d?.getElementById('micBadge')?.classList.contains('active'))b?.click();}if(['solo','nearby','listening'].includes(intState.view)&&view!==intState.view){const d=integrateFrameDoc();const b=d?.getElementById('soloToggle');if(b?.classList.contains('solo-on'))b.click();}intState.view=view;if(setting)intState.settings=setting;renderInt();window.scrollTo({top:0,behavior:'instant'});}
-function renderInt(){const d=intState.data;if(!d)return;const t=tInt();const home=intState.view==='home';$('intHome').classList.toggle('integration-hidden',!home);$('intRoute').classList.toggle('integration-hidden',home);$('intHistory').setAttribute('aria-current',intState.view==='history'?'page':'false');$('intSettings').setAttribute('aria-current',intState.view==='settings'?'page':'false');$('intHistory').title=t.history;$('intHistory').setAttribute('aria-label',t.history);$('intSettings').title=t.settings;$('intSettings').setAttribute('aria-label',t.settings);
+function renderInt(){const d=intState.data;if(!d)return;document.body.dataset.duoIntView=intState.view;const t=tInt();const home=intState.view==='home';$('intHome').classList.toggle('integration-hidden',!home);$('intRoute').classList.toggle('integration-hidden',home);$('intHistory').setAttribute('aria-current',intState.view==='history'?'page':'false');$('intSettings').setAttribute('aria-current',intState.view==='settings'?'page':'false');$('intHistory').title=t.history;$('intHistory').setAttribute('aria-label',t.history);$('intSettings').title=t.settings;$('intSettings').setAttribute('aria-label',t.settings);
 for(const [id,key] of [['intHomeKicker','welcome'],['intHomeTitle','home'],['intHomeDesc','homeDesc'],['intLiveTitle','live'],['intLiveDesc','liveDesc'],['intSoloTitle','solo'],['intBack','back'],['intLangInfo','changeLater'],['intToConnect','nextConnect'],['intToTalk','nextTalk'],['intSettingSpeakLabel','speak'],['intSettingHearLabel','hear'],['intInterfaceLabel','appLanguage'],['intSaveLanguages','save'],['intEditDevices','editDevice'],['intDeviceInfo','deviceNote'],['intVersionNotice','note']])$(id).textContent=t[key];
 document.querySelector('label[for="intSpeak"]').textContent=t.speak;document.querySelector('label[for="intHear"]').textContent=t.hear;
 const isSettings=intState.view==='settings',isFrame=['connect','talk','solo','nearby','listening','history'].includes(intState.view)||(isSettings&&['ai','usage'].includes(intState.settings));
@@ -815,7 +815,7 @@ Array.from($('intProgress').children).forEach((item,i)=>item.classList.toggle('a
 $('intSettingTabs').replaceChildren();if(isSettings){for(const cat of ['voices','idiomas','devices','ai','phrasebook','usage']){let b=document.createElement('button');b.type='button';b.textContent=cat==='phrasebook'?({pt:'Frases rápidas',fr:'Phrases rapides',es:'Frases rápidas',en:'Quick phrases',de:'Schnelle Sätze',nl:'Snelle zinnen',it:'Frasi rapide',ar:'عبارات سريعة',zh:'快捷短语'}[(d.ui||'en').split('-')[0]]||'Quick phrases'):t[cat];b.setAttribute('aria-selected',String(intState.settings===cat));b.addEventListener('click',()=>intGo('settings',cat));$('intSettingTabs').append(b)}}
 const M=mInt();for(const [i,id] of [[0,"intHomeTitle"],[1,"intHomeDesc"],[2,"intLiveTitle"],[3,"intLiveDesc"],[4,"modeConnectTitle"],[5,"modeConnectDesc"],[6,"modeConnectBadge"],[7,"modeNearbyTitle"],[8,"modeNearbyDesc"],[9,"modeNearbyBadge"],[10,"modeListenTitle"],[11,"modeListenDesc"],[12,"modeListenBadge"],[13,"intSoloTitle"]])$(id).textContent=M[i];
 if(intState.view==='nearby'){$('intRouteTitle').textContent=M[14];$('intRouteDesc').textContent=M[15]}
-if(intState.view==='listening'){$('intRouteTitle').textContent=M[16];$('intRouteDesc').textContent=M[17]}
+if(intState.view==='listening'){$('intRouteTitle').textContent=M[16];$('intRouteDesc').textContent='Escute falas ao seu redor e ouça a tradução no idioma escolhido. O áudio é captado pelo microfone.'}
 for(const [i,id] of [[18,'oneSourceLabel'],[19,'oneTargetLabel'],[20,'oneExplain'],[21,'oneSwap'],[22,'oneApply']])$(id).textContent=M[i];
 $('intReviewWelcome').textContent=((intState.data?.ui||'').startsWith('pt')?'Rever a configuração inicial ↗':(intState.data?.ui||'').startsWith('fr')?'Revoir la configuration initiale ↗':(intState.data?.ui||'').startsWith('es')?'Revisar configuración inicial ↗':'Review initial setup ↗');$('intStatus').textContent='';if(isSettings&&intState.settings==='devices')renderIntDevices();if(isSettings&&intState.settings==='phrasebook')renderPhrasePanel();updateIntPrefs();showFrameRoute();if(['nearby','listening'].includes(intState.view))applyOnePhone(false);}
 function renderIntDevices(){let saved=[];try{saved=JSON.parse(localStorage.getItem('duotranslate-concept-profile')||'{}').microphoneProfiles||[]}catch(e){}let out=$('intDevicesList');out.replaceChildren();if(!saved.length){const p=document.createElement('p');p.className='int-caption';p.textContent=tInt().deviceNone;out.append(p);return}
