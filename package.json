@@ -1,0 +1,12 @@
+{
+  "name": "duotranslate-ai-worker",
+  "version": "1.3.0",
+  "private": true,
+  "description": "Cloudflare Worker para o DuoTranslate; frontend estático continua no GitHub Pages",
+  "scripts": {
+    "deploy": "wrangler deploy"
+  },
+  "devDependencies": {
+    "wrangler": "4.135.0"
+  }
+}
