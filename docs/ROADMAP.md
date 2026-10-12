@@ -59,3 +59,20 @@ Não é um relatório de funções que já estão implementadas.
 - **SpeechBrain:** experimento local `experiments/speechbrain_voice_test.py` para verificar locutor por comparações de amostras autorizadas; ainda NÃO foi testado com gravações reais, NÃO está integrado ao produto e NÃO melhora ASR diretamente.
 - **Pendente agora:** teste end-to-end com dois celulares (Android/iPhone), WebRTC, permissões, som dos fones/alto-falantes, convite, tradução em ambos os sentidos e resposta em PT/FR; também verificar no celular se a correção de deslizamento resolveu a queixa. A versão 2.7 NÃO está validada como pronta para uso prolongado.
 - **Próxima medição do vocabulário:** repetir 10 frases com modo desligado, depois ligado, observar média/mediana de `translationMs` separadamente do reconhecimento e TTS, e comparar sem extrapolar para frases longas.
+
+## Conceito futuro — DuoTranslate Cinema / Media (registrado em 2026-10-12)
+- **Ideia solicitada:** assistir a um mesmo filme/série/vídeo em um computador, celular ou TV enquanto duas ou mais pessoas escutam **idiomas diferentes** em **fones distintos**, sem trocar o idioma global do aparelho (exemplo: francês no fone A e português no fone B).
+- **Prioridade:** depois de estabilizar conversação real e opções de voz do DuoTranslate. Não implementado, nenhuma promessa de compatibilidade universal.
+- **Caminho mais simples:** se o filme já tiver faixas de áudio oficiais em vários idiomas, reproduzir as faixas em sincronia e enviar cada uma ao dispositivo de saída selecionado. Seria um player multifaixa/multissaída, não necessariamente tradução por IA.
+- **Caminho avançado:** quando não existe dublagem em outro idioma, gerar tradução+voz sincronizada (mais complexo, custos, latência, lip-sync e qualidade).
+- **Pesquisa e testes futuros:** primeira prova de conceito no Windows/desktop com dois dispositivos de saída simultâneos e sincronização; depois avaliar Android, iPhone/iPad, TV e streaming. Navegadores, Bluetooth e sistemas de TV têm limitações de roteamento e DRM. Respeitar direitos autorais, licenças e permissões.
+- **Fluxo visual:** escolher mídia → detectar faixas de áudio → conectar/listar fones/saídas → escolher idioma por fone → reproduzir e sincronizar, podendo mudar independentemente a qualquer momento.
+
+## Prévia de interface v2.8 — 2026-10-12
+- Prévia criada em `preview/v2.8/index.html`; versões anteriores `preview/v2.7/` e Beta 1.7 preservadas.
+- Na tela de conversação, laboratório, escuta e idiomas, adicionar expansível **Ajustar voz da tradução** com idioma, voz local por idioma, controle de velocidade e amostra; botão para configuração premium ElevenLabs.
+- Na configuração inicial (etapa 4), a voz escolhida passa a ser persistida nas preferências reais do motor de voz, em vez de ficar apenas como amostra. Ainda requer teste de reprodução nos aparelhos.
+- Corrigida oscilação automática `direction:rtl` enquanto a tela inicial rotaciona saudações (sem alterar a escolha explícita do usuário para árabe).
+- Na configuração ElevenLabs, adicionada consulta opcional às vozes retornadas pela própria conta do usuário; depende de API ativada e de permissões do plano.
+- Guia de implantação simplificado em português: `cloudflare/VOICE-SETUP.md`. Segundo Worker **não está criado ou habilitado na Cloudflare**: criar separadamente por GitHub/Workers Builds; segredos ficam privados.
+- Pendente: teste manual de tela 4 → escolher voz → ouvir na conversa; testar o controle dentro dos 3 modos; testagem com Jérôme em 2 celulares; publicação real do segundo Worker + teste de voz com créditos autorizados. Sintaxe JS validada, mas não foi executado teste de browser em dois aparelhos.
