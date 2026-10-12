@@ -154,6 +154,7 @@ async function process(input){
   if(epoch!==s.epoch)return;
   s.last={text:out,lang:target()};
   addResult(original,out,false,translationMs);
+  window.DuoHistory?.add({mode:'solo',direction:'sent',source:ui.source.value,target:target(),original,translation:out,translationMs,provider:window.DuoAI?.label()||'MyMemory'});
   status('Tradução concluída. Reproduzindo em '+languages[target()].name+'...');
   render();
   speak(out,target(),()=>{
