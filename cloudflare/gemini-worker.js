@@ -9,7 +9,7 @@
 const APP_ORIGIN = 'https://jvictorsouza217-tech.github.io';
 const DEFAULT_MODEL = 'gemini-3.5-flash-lite';
 const MODEL_API = 'https://generativelanguage.googleapis.com/v1beta/models/';
-const langs = {'pt-BR':'português brasileiro','fr-FR':'francês da França','en-US':'inglês americano','es-ES':'espanhol','it-IT':'italiano','de-DE':'alemão','ar-SA':'árabe padrão moderno','zh-CN':'chinês mandarim simplificado'};
+const langs = {'pt-BR':'português brasileiro','fr-FR':'francês da França','en-US':'inglês americano','es-ES':'espanhol','it-IT':'italiano','de-DE':'alemão','ar-SA':'árabe padrão moderno','zh-CN':'chinês mandarim simplificado','nl-NL':'neerlandês dos Países Baixos','pl-PL':'polonês da Polônia','ro-RO':'romeno da Romênia','uk-UA':'ucraniano da Ucrânia','ru-RU':'russo','tr-TR':'turco da Turquia'};
 
 function cors(origin){
  return {
@@ -44,7 +44,7 @@ export default {
   const url=new URL(request.url);
   if(request.method==='OPTIONS')return new Response(null,{status:204,headers:cors(origin)});
   if(request.method==='GET' && url.pathname==='/health')
-   return json({ok:true,service:'DuoTranslate AI',version:'1.5.0',configured:!!(env.GEMINI_API_KEY&&env.DUO_ACCESS_CODE),model:DEFAULT_MODEL});
+   return json({ok:true,service:'DuoTranslate AI',version:'1.7.0',configured:!!(env.GEMINI_API_KEY&&env.DUO_ACCESS_CODE),model:DEFAULT_MODEL});
   if(request.method!=='POST' || (url.pathname!=='/translate' && url.pathname!=='/analyze'))
    return json({error:'Rota não encontrada.'},404);
   if(!env.GEMINI_API_KEY||!env.DUO_ACCESS_CODE)
@@ -66,7 +66,7 @@ export default {
   const {text,original,translation,source,target}=payload||{};
   const evaluating=url.pathname==='/analyze';
   if(!Object.hasOwn(langs,source)||!Object.hasOwn(langs,target)||source===target)
-   return json({error:'Selecione português e francês em sentidos diferentes.'},400);
+   return json({error:'Selecione idiomas diferentes, ambos disponíveis no DuoTranslate.'},400);
   if(evaluating){
    if(typeof original!=='string'||typeof translation!=='string'||!original.trim()||!translation.trim()||
       original.length>650||translation.length>1000)
@@ -78,7 +78,7 @@ export default {
   if(!/^[a-z0-9][a-z0-9.-]{3,80}$/.test(model))
    return json({error:'Modelo Gemini configurado incorretamente.'},503);
   const instruction=evaluating
-   ?'Você é revisor profissional bilíngue (português brasileiro e francês europeu). Avalie criticamente a tradução de uma fala: original em '+langs[source]+
+   ?'Você é revisor profissional de traduções entre diferentes idiomas. Avalie criticamente a tradução de uma fala: original em '+langs[source]+
     ', destino em '+langs[target]+'. Responda EM PORTUGUÊS BRASILEIRO, objetivamente, em no máximo 140 palavras, usando quatro linhas: '+
     'FIDELIDADE: se preserva a mensagem e o tom; NATURALIDADE: se é idiomática para uma conversa; '+
     'PROBLEMAS: erros concretos ou nenhum; SUGESTÃO: melhor versão traduzida, caso valha a pena mudar. '+
