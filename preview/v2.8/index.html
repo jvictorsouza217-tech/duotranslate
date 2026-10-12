@@ -669,8 +669,16 @@ function savePremium(){
  return true;
 }
 async function browsePremiumVoices(){
- if(!savePremium())return;
+ const url=$('premiumUrl').value.trim(),pin=$('premiumPin').value.trim();
+ let target;try{target=new URL(url)}catch(e){$('premiumStatus').textContent='Informe o endereço HTTPS do Worker de voz.';return}
+ if(target.protocol!=='https:'||target.username||target.password||target.search||target.hash||!pin){
+  $('premiumStatus').textContent='Informe URL HTTPS válida e código do Worker antes de consultar vozes.';return;
+ }
+ const cfg=premiumStored();cfg.url=url;cfg.voices=cfg.voices||{};
+ localStorage.setItem('duotranslate.premium.voice.v1',JSON.stringify(cfg));
+ sessionStorage.setItem('duotranslate.voice.pin.session',pin);
  const doc=integrateFrameDoc(),api=doc?.defaultView?.DuoPremiumVoice;
+ if(api)api.configure({...cfg,pin});
  if(!api){$('premiumStatus').textContent='Aguarde o tradutor carregar.';return}
  $('premiumStatus').textContent='Consultando as vozes da sua conta (requer acesso à API)...';
  try{
