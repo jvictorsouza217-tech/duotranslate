@@ -5,7 +5,7 @@ const $ = (id) => document.getElementById(id);
 const el = {
  create: $('createBtn'), join: $('joinBtn'), code: $('codeInput'), roomSetup: $('roomSetup'),
  roomActive: $('roomActive'), roomCode: $('roomCode'), roomLabel: $('roomLabel'),
- roomHelp: $('roomHelp'), connection: $('connectionState'), copy: $('copyBtn'),
+ roomHelp: $('roomHelp'), connection: $('connectionState'), copy: $('copyBtn'), hearSelect:$('duoHearLanguage'), direction:$('duoDirection'),
  leave: $('leaveBtn'), listen: $('listenBtn'), listenStatus: $('listenStatus'),
  micBadge: $('micBadge'), micOrb: $('micOrb'), audio: $('testAudioBtn'),
  form: $('textForm'), input: $('textInput'), send: $('sendBtn'),
@@ -15,11 +15,11 @@ const LANG = window.DuoLanguages || {};
 const Recognition = window.SpeechRecognition || window.webkitSpeechRecognition;
 const alphabet = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
 const state = {
- language:'pt-BR', other:null, peer:null, conn:null, room:'', host:false,
+ language:'pt-BR', hearLanguage:'fr-FR', other:null, otherHear:null, peer:null, conn:null, room:'', host:false,
  listen:false, recognizing:false, instance:null, speaking:false, queue:[],
  restart:null, toastTimer:null, transQueue:Promise.resolve(), session:0, netErrors:0
 };
-function connected(){return !!(state.conn && state.conn.open && state.other);}
+function connected(){return !!(state.conn && state.conn.open && state.other && state.otherHear);}
 function status(s){el.listenStatus.textContent=s;}
 function notify(s, error=false){
  clearTimeout(state.toastTimer);
@@ -30,6 +30,12 @@ function notify(s, error=false){
 }
 function view(){
  const inRoom=!!state.room, ok=connected();
+ if(el.direction){
+  const to=ok?state.otherHear:state.hearLanguage;
+  el.direction.textContent='Você fala '+LANG[state.language].name+' · A outra pessoa ouvirá '+LANG[to].name+
+   ' · Você ouvirá em '+LANG[state.hearLanguage].name;
+ }
+ if(el.hearSelect)el.hearSelect.value=state.hearLanguage;
  el.roomSetup.classList.toggle('hidden',inRoom);
  el.roomActive.classList.toggle('hidden',!inRoom);
  el.create.disabled=inRoom; el.join.disabled=inRoom;
@@ -79,7 +85,7 @@ function haltMic(){
 function stopMic(){state.listen=false;haltMic();view();}
 function exitRoom(){
  stopMic();state.session++;
- state.room='';state.other=null;state.host=false;
+ state.room='';state.other=null;state.otherHear=null;state.host=false;
  state.queue.length=0;state.speaking=false;
  try{window.speechSynthesis && window.speechSynthesis.cancel();}catch(e){}
  try{state.conn && state.conn.close();}catch(e){}
@@ -121,26 +127,26 @@ function useConnection(conn){
  state.conn=conn;
  conn.on('open',()=>{
   if(state.conn!==conn)return;
-  transmit({type:'hello',lang:state.language});view();notify('Celulares conectados!');
+  transmit({type:'hello',lang:state.language,hear:state.hearLanguage});view();notify('Celulares conectados!');
  });
  conn.on('data',data=>{
   if(!data || typeof data!=='object' || state.conn!==conn)return;
   if(data.type==='hello'){
    if(!Object.prototype.hasOwnProperty.call(LANG,data.lang))return;
-   state.other=data.lang;view();
-   if(state.other===state.language)notify('Escolham idiomas diferentes.',true);
+   if(!Object.prototype.hasOwnProperty.call(LANG,data.hear))return;
+   state.other=data.lang;state.otherHear=data.hear;view();
   }else if(data.type==='speech' && typeof data.translation==='string'){
-   if(data.target!==state.language)return;
+   if(data.target!==state.hearLanguage)return;
    const translated=data.translation.trim().slice(0,600);
    if(!translated)return;
    bubble('theirs',String(data.original||'').slice(0,600),translated,false,Number(data.translationMs));
-   window.DuoHistory?.add({mode:'duo',direction:'received',source:state.other,target:state.language,original:String(data.original||'').slice(0,600),translation:translated,translationMs:data.translationMs,provider:String(data.provider||'Outro aparelho')});
-   state.queue.push({text:translated,lang:state.language});playQueue();
+   window.DuoHistory?.add({mode:'duo',direction:'received',source:state.other,target:state.hearLanguage,original:String(data.original||'').slice(0,600),translation:translated,translationMs:data.translationMs,provider:String(data.provider||'Outro aparelho')});
+   state.queue.push({text:translated,lang:state.hearLanguage});playQueue();
   }
  });
  conn.on('close',()=>{
   if(state.conn!==conn)return;
-  state.conn=null;state.other=null;stopMic();view();
+  state.conn=null;state.other=null;state.otherHear=null;stopMic();view();
   if(state.room)notify('O segundo celular desconectou.',true);
  });
  conn.on('error',()=>notify('Falha na comunicação entre celulares.',true));
@@ -201,20 +207,20 @@ function phrase(text){
  const original=String(text||'').trim().slice(0,400);
  if(!original)return;
  if(!connected()){notify('Conecte os dois celulares primeiro.',true);return;}
- if(state.other===state.language){notify('Escolham idiomas diferentes.',true);return;}
+ if(state.otherHear===state.language){notify('O idioma falado e o destino no outro celular são iguais. Escolham línguas diferentes.',true);return;}
  const session=state.session;
  state.transQueue=state.transQueue.catch(()=>{}).then(async()=>{
   if(session!==state.session || !connected())return;
   status('Traduzindo...');
   try{
    const translationStart=performance.now();
-   const result=await translate(original,state.language,state.other);
+   const result=await translate(original,state.language,state.otherHear);
    const translationMs=Math.round(performance.now()-translationStart);
    if(session!==state.session || !connected())return;
-   if(!transmit({type:'speech',original:original,translation:result,target:state.other,translationMs,provider:window.DuoAI?.label()||'MyMemory'}))
+   if(!transmit({type:'speech',original:original,translation:result,target:state.otherHear,translationMs,provider:window.DuoAI?.label()||'MyMemory'}))
     throw Error('Não foi possível enviar a tradução.');
    bubble('mine',original,result,false,translationMs);
-   window.DuoHistory?.add({mode:'duo',direction:'sent',source:state.language,target:state.other,original,translation:result,translationMs,provider:window.DuoAI?.label()||'MyMemory'});
+   window.DuoHistory?.add({mode:'duo',direction:'sent',source:state.language,target:state.otherHear,original,translation:result,translationMs,provider:window.DuoAI?.label()||'MyMemory'});
    status(state.listen?'Ouvindo...':'Tradução enviada ao outro celular.');
   }catch(e){
    if(session!==state.session)return;
@@ -304,9 +310,19 @@ document.querySelectorAll('.language').forEach(button=>button.addEventListener('
   const yes=b===button;b.classList.toggle('selected',yes);b.setAttribute('aria-pressed',String(yes));
  });
  if(state.listen)haltMic();
- transmit({type:'hello',lang:state.language});view();
+ transmit({type:'hello',lang:state.language,hear:state.hearLanguage});view();
  if(state.listen)startRecognition();
 }));
+if(el.hearSelect){
+ el.hearSelect.addEventListener('change',()=>{
+  const next=el.hearSelect.value;
+  if(!Object.prototype.hasOwnProperty.call(LANG,next))return;
+  state.hearLanguage=next;
+  state.queue.length=0;
+  transmit({type:'hello',lang:state.language,hear:state.hearLanguage});
+  view();
+ });
+}
 el.create.addEventListener('click',createRoom);
 el.join.addEventListener('click',joinRoom);
 el.code.addEventListener('input',()=>{el.code.value=normalized(el.code.value);});
@@ -320,7 +336,7 @@ el.copy.addEventListener('click',async()=>{
 el.listen.addEventListener('click',()=>{
  if(state.listen){stopMic();return;}
  if(!connected()){notify('Conecte os dois celulares primeiro.',true);return;}
- if(state.language===state.other){notify('Escolham idiomas diferentes.',true);return;}
+ if(state.language===state.otherHear){notify('A outra pessoa selecionou para ouvir o mesmo idioma que você fala. Ajustem a língua de destino.',true);return;}
  state.listen=true;view();startRecognition();
 });
 el.audio.addEventListener('click',testAudio);
