@@ -49,3 +49,13 @@ Não é um relatório de funções que já estão implementadas.
 - Verificação de sintaxe JavaScript e de integridade do HTML de boas-vindas: concluída.
 - **Não concluído:** testes físicos de microfone/Bluetooth/voz, pareamento no Android/iPhone e confiabilidade da escuta longa. Validar com pessoas reais antes de declarar pronto.
 - Atalho em Configurações → Dispositivos: 'Rever configuração inicial'.
+
+## Entrega parcial v2.7 — 2026-10-12
+- **Prévia publicada:** `preview/v2.7/`, sem modificar a Beta 1.7 ou as páginas de boas-vindas da Concept; motor isolado `preview/engine-v2.7/`.
+- **UI:** melhorias de largura para evitar deslizamento lateral. Os três modos continuam acessíveis e o modo conectado permite **falar PT/ouvir PT**, enquanto a outra pessoa **fala FR/ouve FR** (correção importante: são línguas do usuário, não par obrigatório PT→FR).
+- **Convite:** a partir do motor v2.7, o link de convite aponta à prévia v2.7 com `?room=` e o receptor entra no caminho de conexão com a sala previamente preenchida. Primeiro teste físico pendente.
+- **Vocabulário:** protótipo `preview/engine-v2.7/phrasebook.js`: 9 expressões comuns em cada um dos 14 idiomas, possibilidade de tradução exata entre todos os pares. **Ativação voluntária** por Configurações → Frases rápidas; desativado por padrão. Em frases não reconhecidas, mantém Gemini ou MyMemory. Testes unitários de 1.638 combinações de tradução estrutural passaram (não equivale a revisão de naturalidade linguística). Latência total, prosódia e precisão não testadas em aparelhos.
+- **Vozes:** navegador mantém TTS nativo como padrão. Novo módulo `preview/engine-v2.7/premium-voice.js` é opt-in com fallback nativo. Requer publicar Worker SEPARADO `cloudflare/voice-worker-test.js` com segredos, rate limiter e habilitação explícita antes de usar ElevenLabs. Não envia nem expõe API Key ao website e nenhuma cobrança automática foi ativada.
+- **SpeechBrain:** experimento local `experiments/speechbrain_voice_test.py` para verificar locutor por comparações de amostras autorizadas; ainda NÃO foi testado com gravações reais, NÃO está integrado ao produto e NÃO melhora ASR diretamente.
+- **Pendente agora:** teste end-to-end com dois celulares (Android/iPhone), WebRTC, permissões, som dos fones/alto-falantes, convite, tradução em ambos os sentidos e resposta em PT/FR; também verificar no celular se a correção de deslizamento resolveu a queixa. A versão 2.7 NÃO está validada como pronta para uso prolongado.
+- **Próxima medição do vocabulário:** repetir 10 frases com modo desligado, depois ligado, observar média/mediana de `translationMs` separadamente do reconhecimento e TTS, e comparar sem extrapolar para frases longas.
