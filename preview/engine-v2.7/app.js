@@ -330,7 +330,7 @@ el.code.addEventListener('input',()=>{el.code.value=normalized(el.code.value);})
 el.code.addEventListener('keydown',e=>{if(e.key==='Enter')joinRoom();});
 el.leave.addEventListener('click',exitRoom);
 el.copy.addEventListener('click',async()=>{
- const invite=location.origin+location.pathname+'?room='+state.room;
+ const invite=new URL('../v2.7/?room='+encodeURIComponent(state.room),location.href).href;
  try{await navigator.clipboard.writeText(invite);notify('Convite copiado!');}
  catch(e){notify('Compartilhe o código '+state.room);}
 });
