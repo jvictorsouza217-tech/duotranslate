@@ -3,18 +3,16 @@
 'use strict';
 const $ = id => document.getElementById(id);
 const ui = {
- source:$('soloSource'), toggle:$('soloToggle'), status:$('soloStatus'),
+ source:$('soloSource'), target:$('soloTarget'), toggle:$('soloToggle'), status:$('soloStatus'),
  sample:$('soloSample'), replay:$('soloReplay'), form:$('soloForm'),
  input:$('soloText'), results:$('soloResults'), tip:$('soloTip')
 };
 if (!ui.toggle) return;
 const Recognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-const languages = {'fr-FR':{code:'fr',name:'francês'},'pt-BR':{code:'pt',name:'português'}};
+const languages = window.DuoLanguages || {};
 const s = {enabled:false,busy:false,rec:null,timer:null,epoch:0,errors:0,last:null,utterance:null};
-const target = () => ui.source.value==='fr-FR'?'pt-BR':'fr-FR';
-const example = () => ui.source.value==='fr-FR'
- ? 'Bonjour ! Comment allez-vous aujourd’hui ? Je voudrais vous poser une question.'
- : 'Olá! Como você está hoje? Gostaria de fazer uma pergunta.';
+const target = () => ui.target.value;
+const example = () => languages[ui.source.value]?.example||'Bom dia! Como você está?';
 function status(message){ui.status.textContent=message;}
 function render(){
  ui.toggle.textContent=s.enabled?'■ Parar de ouvir':'🎙 Começar a ouvir';
@@ -22,7 +20,7 @@ function render(){
  ui.sample.disabled=s.busy;
  ui.replay.disabled=!s.last || s.busy;
  ui.form.querySelector('button').disabled=s.busy;
- ui.source.disabled=s.busy;
+ ui.source.disabled=s.busy;ui.target.disabled=s.busy;
  ui.toggle.disabled=!Recognition && !s.enabled;
  if(!Recognition && !s.enabled)status('Reconhecimento de voz não disponível neste navegador. Use a frase de exemplo.');
 }
@@ -56,7 +54,7 @@ async function translate(text,from,to){
  if(window.DuoAI?.enabled())return window.DuoAI.translate(text,from,to);
  const url=new URL('https://api.mymemory.translated.net/get');
  url.searchParams.set('q',text);
- url.searchParams.set('langpair',languages[from].code+'|'+languages[to].code);
+ url.searchParams.set('langpair',languages[from].api+'|'+languages[to].api);
  const controller=new AbortController();
  const timeout=setTimeout(()=>controller.abort(),15000);
  let response;
@@ -69,7 +67,9 @@ async function translate(text,from,to){
  const html=String(data.responseData.translatedText);
  if(/MYMEMORY WARNING|USAGE LIMIT|DAILY LIMIT|QUERY LENGTH LIMIT/i.test(html))
   throw Error('Limite gratuito do tradutor atingido.');
- return new DOMParser().parseFromString(html,'text/html').body.textContent.trim();
+ const out=new DOMParser().parseFromString(html,'text/html').body.textContent.trim();
+ window.DuoUsage?.record({engine:'mymemory',ok:true});
+ return out;
 }
 function speak(text,language,complete){
  if(!window.speechSynthesis || !window.SpeechSynthesisUtterance){
@@ -145,6 +145,7 @@ function startCapture(){
 async function process(input){
  const original=String(input||'').trim().slice(0,350);
  if(!original || s.busy)return;
+ if(ui.source.value===ui.target.value){status('Escolha idiomas diferentes.');return;}
  s.busy=true;const epoch=s.epoch;
  stopCapture();render();status('Traduzindo frase...');
  try{
@@ -180,12 +181,25 @@ ui.toggle.addEventListener('click',()=>{
  s.enabled=true;s.epoch++;s.errors=0;render();
  status('Pedindo permissão para o microfone...');startCapture();
 });
-ui.source.addEventListener('change',()=>{
+function changedLanguage(which){
+ if(ui.source.value===ui.target.value){
+  if(which==='source')ui.target.value=ui.source.value==='pt-BR'?'fr-FR':'pt-BR';
+  else ui.source.value=ui.target.value==='pt-BR'?'fr-FR':'pt-BR';
+ }
+ if(s.enabled)stop();
+ s.last=null;ui.replay.disabled=true;
+ ui.input.placeholder='Digite uma frase em '+(languages[ui.source.value]?.name||'outro idioma')+'...';
+ status('Escolha um teste: ouvir pelo microfone ou traduzir uma frase.');
+}
+ui.source.addEventListener('change',()=>changedLanguage('source'));
+ui.target.addEventListener('change',()=>changedLanguage('target'));
+/* legacy: language change handler removed */
+/*ui.source.addEventListener('change',()=>{
  if(s.enabled)stop();
  s.last=null;ui.replay.disabled=true;ui.input.placeholder=ui.source.value==='fr-FR'
   ? 'Digite uma frase em francês...' : 'Digite uma frase em português...';
  status('Escolha um teste: ouvir pelo microfone ou traduzir uma frase.');
-});
+});*/
 ui.sample.addEventListener('click',()=>process(example()));
 ui.form.addEventListener('submit',e=>{e.preventDefault();if(s.busy)return;const t=ui.input.value.trim();if(t)process(t);});
 ui.replay.addEventListener('click',()=>{
