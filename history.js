@@ -202,5 +202,5 @@ ui.list.addEventListener('click',e=>{
 window.DuoHistory={add,count:()=>records.length};
 render();
 if(!storageOk)info('O navegador bloqueou o armazenamento local. Seus testes podem não permanecer após fechar a página.',true);
-else info('Só você tem acesso a estes registros neste navegador. Nenhuma conversa é salva no GitHub ou sincronizada.');
+else info('Os registros ficam somente neste navegador e não são sincronizados pelo aplicativo. Evite salvar conversas sensíveis.');
 })();
