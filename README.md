@@ -1,4 +1,4 @@
-# DuoTranslate — protótipo 1.5
+# DuoTranslate — protótipo 1.6
 
 **Objetivo:** duas pessoas se comunicarem em português (Brasil) e francês (França), cada uma usando **seu próprio celular e fone Bluetooth comum**. A pessoa fala ao microfone do celular/fone; o outro aparelho reproduz a versão traduzida em voz alta.
 
@@ -13,6 +13,17 @@
 - Leitura em voz alta da tradução recebida com `speechSynthesis` — deve usar o dispositivo de saída padrão do telefone, incluindo Bluetooth quando roteado pelo sistema.
 - Botões para testar o áudio e para digitar frases manualmente se o reconhecimento de voz não funcionar.
 - Ao reproduzir uma tradução, o app tenta pausar temporariamente a captação para evitar que o áudio seja novamente traduzido.
+
+## Versão 1.6 — correção dos pares e oito idiomas na interface
+
+- Backup criado: branch `stable-v1.5` (antes da correção).
+- Corrigida a seleção **origem → destino** no teste individual: selecionar uma língua não muda mais automaticamente a outra para francês/português.
+- Se origem e destino coincidirem, o app mostra um aviso explícito, em vez de redirecionar para um idioma inesperado.
+- A conversa em dupla agora tem escolhas independentes: **idioma que cada pessoa fala** e **idioma no qual cada pessoa quer ouvir**. Cada telefone envia ambas as informações ao parceiro; a tradução vai para o destino que ele pediu. A seleção do outro telefone não fica mais implicitamente vinculada ao idioma que a pessoa fala.
+- A interface tem opções para português, francês, inglês, espanhol, italiano, alemão, árabe e mandarim, com tradução de painéis, campos principais e avisos. Algumas mensagens técnicas dinâmicas podem aparecer em português nesta versão beta.
+- Fontes e destinos permanecem válidos nos oito idiomas; capacidade de reconhecimento e síntese de voz continua dependente do dispositivo.
+- Validação em ambiente simulado: 56 pares encaminhados corretamente no modo individual e no Worker. Testes em aparelhos e com API externa real continuam necessários.
+- Importante: após abrir a atualização, recarregar **os dois** navegadores para que o novo protocolo de conexão seja utilizado em ambas as pontas.
 
 ## Versão 1.5 — idiomas e controle de consumo (beta, sem instaladores)
 
