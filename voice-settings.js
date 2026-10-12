@@ -2,7 +2,7 @@
 (() => {
 'use strict';
 const byId=id=>document.getElementById(id);
-const ui={pt:byId('voicePt'),fr:byId('voiceFr'),rate:byId('voiceRate'),rateOut:byId('voiceRateOut'),fast:byId('fastSpeech'),status:byId('voiceSettingsStatus'),tryPt:byId('tryVoicePt'),tryFr:byId('tryVoiceFr')};
+const ui={pt:byId('voicePt'),fr:byId('voiceFr'),otherLang:byId('voiceOtherLang'),otherVoice:byId('voiceOther'),otherStatus:byId('voiceOtherStatus'),tryOther:byId('tryVoiceOther'),rate:byId('voiceRate'),rateOut:byId('voiceRateOut'),fast:byId('fastSpeech'),status:byId('voiceSettingsStatus'),tryPt:byId('tryVoicePt'),tryFr:byId('tryVoiceFr')};
 const synth=window.speechSynthesis;
 const storageKey='duotranslate.voice.v1';
 let config={voices:{'pt-BR':'','fr-FR':''},rate:1,fast:false};
@@ -10,7 +10,7 @@ try {
  const stored=JSON.parse(localStorage.getItem(storageKey)||'null');
  if(stored && typeof stored==='object'){
   if(stored.voices && typeof stored.voices==='object'){
-   for(const lang of ['pt-BR','fr-FR']) if(typeof stored.voices[lang]==='string')config.voices[lang]=stored.voices[lang];
+   for(const lang of Object.keys(window.DuoLanguages||{})) if(typeof stored.voices[lang]==='string')config.voices[lang]=stored.voices[lang];
   }
   const rate=Number(stored.rate);
   if(Number.isFinite(rate)&&rate>=.75&&rate<=1.25)config.rate=rate;
@@ -46,6 +46,14 @@ function populate(select,lang){
 }
 function refresh(){
  populate(ui.pt,'pt-BR');populate(ui.fr,'fr-FR');
+ if(ui.otherLang && ui.otherVoice){
+  const lang=ui.otherLang.value;
+  populate(ui.otherVoice,lang);
+  const found=voices().filter(v=>v.lang?.toLowerCase().replace('_','-').startsWith(lang.slice(0,2).toLowerCase()));
+  ui.otherStatus.textContent=found.length
+   ?found.length+' voz(es) encontrada(s) para '+(window.DuoLanguages?.[lang]?.name||lang)+'.'
+   :'Nenhuma voz específica para '+(window.DuoLanguages?.[lang]?.name||lang)+' encontrada neste dispositivo. O áudio automático pode não funcionar. Para voz neural futura, testaremos ElevenLabs.';
+ }
  if(ui.status){
   const found=voices().filter(v=>/^(fr|pt)(-|_)/i.test(v.lang||''));
   ui.status.textContent=found.length
@@ -83,6 +91,24 @@ function test(lang){
 }
 ui.tryPt?.addEventListener('click',()=>test('pt-BR'));
 ui.tryFr?.addEventListener('click',()=>test('fr-FR'));
+if(ui.otherLang){
+ ui.otherLang.addEventListener('change',refresh);
+ ui.otherVoice?.addEventListener('change',()=>{config.voices[ui.otherLang.value]=ui.otherVoice.value;save();});
+ ui.tryOther?.addEventListener('click',()=>{
+  const lang=ui.otherLang.value;
+  if(!window.DuoLanguages?.[lang])return;
+  if(!synth||!window.SpeechSynthesisUtterance){ui.otherStatus.textContent='Este navegador não oferece síntese de voz.';return;}
+  if(byId('micBadge')?.classList.contains('active')||byId('soloToggle')?.classList.contains('solo-on')){
+    ui.otherStatus.textContent='Pare o microfone antes de testar para evitar eco.';return;
+  }
+  const u=new SpeechSynthesisUtterance(window.DuoLanguages[lang].sample);
+  u.lang=lang;u.rate=config.rate;u.voice=getVoice(lang);
+  if(!u.voice)u.voice=voices().find(v=>v.lang?.toLowerCase().replace('_','-').startsWith(lang.slice(0,2)))||null;
+  u.onerror=()=>{ui.otherStatus.textContent='Não foi possível reproduzir este idioma. Teste outro aparelho ou voz instalada.';};
+  ui.otherStatus.textContent='Testando '+window.DuoLanguages[lang].name+' na saída de áudio atual...';
+  try{synth.cancel();synth.speak(u);}catch(e){ui.otherStatus.textContent='Não foi possível reproduzir a voz.';}
+ });
+}
 if(synth){
  if(typeof synth.addEventListener==='function')synth.addEventListener('voiceschanged',refresh);
  else {const old=synth.onvoiceschanged;synth.onvoiceschanged=(e)=>{if(typeof old==='function')old(e);refresh();};}
