@@ -300,6 +300,20 @@ body.integrated-active .mode-choice{touch-action:pan-y}
         <div class="int-actions"><button type="button" class="int-ghost" id="oneSwap">⇄ Inverter idiomas</button><button type="button" class="int-primary" id="oneApply">Aplicar idiomas</button></div>
         <p class="int-caption" id="oneStatus" role="status" aria-live="polite"></p>
       </div>
+      <section id="intPremiumPanel" class="integration-hidden int-phrase-panel">
+        <h3>Voz ElevenLabs — teste opcional</h3>
+        <p>Voz neural por API, com créditos. Requer um Worker separado, sem expor a chave ElevenLabs no site. As vozes do aparelho continuam funcionando normalmente.</p>
+        <div class="int-fieldrow">
+          <div><label for="premiumUrl">Worker de voz (HTTPS)</label><input id="premiumUrl" class="int-select" placeholder="https://seu-worker.workers.dev" autocomplete="off"></div>
+          <div><label for="premiumPin">Código de acesso ao Worker</label><input id="premiumPin" class="int-select" type="password" placeholder="Seu código privado" autocomplete="off"></div>
+          <div><label for="premiumLanguage">Idioma da voz</label><select id="premiumLanguage" class="int-select"></select></div>
+          <div><label for="premiumVoiceId">ID da voz ElevenLabs</label><input id="premiumVoiceId" class="int-select" placeholder="Voice ID" autocomplete="off"></div>
+        </div>
+        <div class="phrase-row"><input id="premiumEnable" type="checkbox"><label for="premiumEnable">Ativar voz ElevenLabs para o idioma selecionado</label></div>
+        <div class="int-actions"><button id="premiumSave" type="button" class="int-ghost">Salvar</button><button id="premiumTest" type="button" class="int-primary">Testar áudio (usa créditos)</button></div>
+        <p id="premiumStatus" role="status" class="int-caption">Desativado. Voz gratuita do aparelho.</p>
+        <p class="int-caption">Configure ELEVENLABS_API_KEY somente como segredo privado do Worker. Não coloque sua chave neste campo.</p>
+      </section>
       <div id="intPhrasePanel" class="integration-hidden int-phrase-panel">
         <h3>Frases rápidas · experimental</h3>
         <p>O aplicativo reconhece 9 frases comuns em cada um dos 14 idiomas, quando a frase é dita isoladamente. Nesses casos, evita chamar o tradutor externo. Expressões desconhecidas continuam com o Gemini ou MyMemory. Esta opção não acelera o reconhecimento da fala nem a reprodução em voz.</p>
@@ -601,6 +615,44 @@ function applyOnePhone(showMsg=true){
  if(showMsg)$('oneStatus').textContent=ok?mInt()[23]:'Please wait for the translation module to load.';
  return ok;
 }
+
+function premiumStored(){try{return JSON.parse(localStorage.getItem('duotranslate.premium.voice.v1')||'{}')}catch(err){return {}}}
+function renderPremium(){
+ const cfg=premiumStored();
+ if(!$('premiumLanguage').options.length){
+  $('premiumLanguage').innerHTML=langs.map(row=>'<option value="'+row[0]+'">'+row[1]+'</option>').join('');
+  $('premiumLanguage').value=intState.data.hear;
+ }
+ $('premiumUrl').value=cfg.url||'';
+ $('premiumPin').value=sessionStorage.getItem('duotranslate.voice.pin.session')||'';
+ $('premiumEnable').checked=cfg.enabled===true;
+ $('premiumVoiceId').value=(cfg.voices||{})[$('premiumLanguage').value]||'';
+}
+function savePremium(){
+ const url=$('premiumUrl').value.trim(),pin=$('premiumPin').value.trim();
+ let u;try{u=new URL(url)}catch(err){$('premiumStatus').textContent='Informe um endereço HTTPS válido.';return false}
+ if(u.protocol!=='https:'||u.username||u.password||u.search||u.hash){$('premiumStatus').textContent='Informe somente o endereço HTTPS do Worker.';return false}
+ const id=$('premiumVoiceId').value.trim(),lang=$('premiumLanguage').value;
+ if(!/^[a-zA-Z0-9]{12,40}$/.test(id)){$('premiumStatus').textContent='ID de voz inválido ou vazio.';return false}
+ if(!pin){$('premiumStatus').textContent='Preencha o código de acesso ao Worker.';return false}
+ const cfg=premiumStored();cfg.voices=cfg.voices||{};cfg.voices[lang]=id;cfg.url=url;cfg.enabled=$('premiumEnable').checked;
+ localStorage.setItem('duotranslate.premium.voice.v1',JSON.stringify(cfg));
+ sessionStorage.setItem('duotranslate.voice.pin.session',pin);
+ const doc=integrateFrameDoc();
+ if(doc&&doc.defaultView&&doc.defaultView.DuoPremiumVoice)doc.defaultView.DuoPremiumVoice.configure({enabled:cfg.enabled,url:cfg.url,voices:cfg.voices,pin:pin});
+ $('premiumStatus').textContent=cfg.enabled?'Configuração salva. Faça um teste para confirmar.':'Configuração salva, com voz do aparelho ainda como padrão.';
+ return true;
+}
+async function testPremiumVoice(){
+ if(!savePremium())return;
+ if(!confirm('A ElevenLabs consome créditos em cada teste. Deseja continuar?'))return;
+ const doc=integrateFrameDoc(),mod=doc&&doc.defaultView&&doc.defaultView.DuoPremiumVoice;
+ if(!mod){$('premiumStatus').textContent='O tradutor ainda está carregando.';return}
+ if(!mod.enabled($('premiumLanguage').value)){$('premiumStatus').textContent='Ative a voz ElevenLabs antes do teste.';return}
+ $('premiumStatus').textContent='Buscando voz na ElevenLabs...';
+ try{await mod.speak('Olá! Este é um teste da minha voz.', $('premiumLanguage').value);$('premiumStatus').textContent='Teste finalizado. Confira a reprodução no seu fone.'}
+ catch(err){$('premiumStatus').textContent='Erro: '+String(err.message||err)+'. Use a voz do aparelho enquanto isso.'}
+}
 function renderPhrasePanel(){
  const on=localStorage.getItem('duotranslate.phrasebook.enabled.v1')==='1';
  $('intPhraseToggle').checked=on;
@@ -616,7 +668,7 @@ function renderInt(){const d=intState.data;if(!d)return;const t=tInt();const hom
 for(const [id,key] of [['intHomeKicker','welcome'],['intHomeTitle','home'],['intHomeDesc','homeDesc'],['intLiveTitle','live'],['intLiveDesc','liveDesc'],['intSoloTitle','solo'],['intBack','back'],['intLangInfo','changeLater'],['intToConnect','nextConnect'],['intToTalk','nextTalk'],['intSettingSpeakLabel','speak'],['intSettingHearLabel','hear'],['intInterfaceLabel','appLanguage'],['intSaveLanguages','save'],['intEditDevices','editDevice'],['intDeviceInfo','deviceNote'],['intVersionNotice','note']])$(id).textContent=t[key];
 document.querySelector('label[for="intSpeak"]').textContent=t.speak;document.querySelector('label[for="intHear"]').textContent=t.hear;
 const isSettings=intState.view==='settings',isFrame=['connect','talk','solo','nearby','listening','history'].includes(intState.view)||(isSettings&&['voices','ai','usage'].includes(intState.settings));
-$('intFrameArea').classList.toggle('integration-hidden',!isFrame);$('intSettingTabs').classList.toggle('integration-hidden',!isSettings);$('intLiveLang').classList.toggle('integration-hidden',intState.view!=='languages');$('intOnePhoneOptions').classList.toggle('integration-hidden',!['nearby','listening'].includes(intState.view));$('oneSwap').classList.toggle('integration-hidden',intState.view!=='nearby');$('intLangSettings').classList.toggle('integration-hidden',!(isSettings&&intState.settings==='idiomas'));$('intDeviceSettings').classList.toggle('integration-hidden',!(isSettings&&intState.settings==='devices'));$('intPhrasePanel').classList.toggle('integration-hidden',!(isSettings&&intState.settings==='phrasebook'));$('intLiveConnectNext').classList.toggle('integration-hidden',intState.view!=='connect');$('intProgress').classList.toggle('integration-hidden',!['languages','connect','talk'].includes(intState.view));
+$('intFrameArea').classList.toggle('integration-hidden',!isFrame);$('intSettingTabs').classList.toggle('integration-hidden',!isSettings);$('intLiveLang').classList.toggle('integration-hidden',intState.view!=='languages');$('intOnePhoneOptions').classList.toggle('integration-hidden',!['nearby','listening'].includes(intState.view));$('oneSwap').classList.toggle('integration-hidden',intState.view!=='nearby');$('intLangSettings').classList.toggle('integration-hidden',!(isSettings&&intState.settings==='idiomas'));$('intDeviceSettings').classList.toggle('integration-hidden',!(isSettings&&intState.settings==='devices'));$('intPremiumPanel').classList.toggle('integration-hidden',!(isSettings&&intState.settings==='voices'));if(isSettings&&intState.settings==='voices')renderPremium();$('intPhrasePanel').classList.toggle('integration-hidden',!(isSettings&&intState.settings==='phrasebook'));$('intLiveConnectNext').classList.toggle('integration-hidden',intState.view!=='connect');$('intProgress').classList.toggle('integration-hidden',!['languages','connect','talk'].includes(intState.view));
 const tags={languages:'01 / 03',connect:'02 / 03',talk:'03 / 03'};
 const labels={phrasebook:['settings','settingsDesc'],languages:['languages','langsDesc'],connect:['connect','connectDesc'],talk:['talk','talkDesc'],solo:['solo','soloDesc'],nearby:['solo','soloDesc'],listening:['solo','soloDesc'],history:['history','histDesc'],settings:['settings','settingsDesc']};
 const p=labels[intState.view]||[];$('intSectionTag').textContent=tags[intState.view]||'DUOTRANSLATE';$('intRouteTitle').textContent=t[p[0]]||'';$('intRouteDesc').textContent=t[p[1]]||'';$('intUserName').textContent=d.name||'';
@@ -632,6 +684,9 @@ for(const v of saved){const row=document.createElement('div');row.className='int
 function enterIntegrated(data,fromReload=false){if(!data)return;intState.data=data;document.body.classList.add('integrated-active');$('integratedApp').classList.remove('integration-hidden');for(const id of ['intSpeak','intHear','intSettingSpeak','intSettingHear']){$(id).innerHTML=opts}const uiOpts=langs.map(x=>`<option value="${x[0]}">${x[1]}</option>`).join('');$('intInterfaceLang').innerHTML=uiOpts;intState.view=/^[A-Z0-9]{8}$/.test(String(new URLSearchParams(location.search).get('room')||'').toUpperCase())?'connect':'home';$('oneSource').innerHTML=opts;$('oneTarget').innerHTML=opts;$('oneSource').value=data.hear;$('oneTarget').value=data.speak;renderInt();
 const frame=$('duoRealFrame');if(!frame.getAttribute('src')||frame.getAttribute('src')==='about:blank'){frame.addEventListener('load',()=>{intState.frameReady=false;intState.frameObserver?.disconnect();intState.frameObserver=null;applyPrefsToEmbeddedBeta(intState.data)}, {once:true});frame.src=new URL('../engine-v2.7/'+(new URLSearchParams(location.search).get('room')?/\?room=[A-Z0-9]{8}/.test('?room='+new URLSearchParams(location.search).get('room').toUpperCase())?'?room='+new URLSearchParams(location.search).get('room').toUpperCase():'':''),window.location.href).href}else if(!fromReload)applyPrefsToEmbeddedBeta(data);window.scrollTo(0,0)}
 function leaveIntegrated(backToStart){const frame=$('duoRealFrame');intState.frameObserver?.disconnect();intState.frameObserver=null;intState.frameReady=false;frame.src='about:blank';document.body.classList.remove('integrated-active');$('integratedApp').classList.add('integration-hidden');show(backToStart?0:2)}
+$('premiumSave').onclick=savePremium;
+$('premiumTest').onclick=testPremiumVoice;
+$('premiumLanguage').onchange=()=>{$('premiumVoiceId').value=(premiumStored().voices||{})[$('premiumLanguage').value]||''};
 $('intPhraseToggle').onchange=()=>{localStorage.setItem('duotranslate.phrasebook.enabled.v1',$('intPhraseToggle').checked?'1':'0');renderPhrasePanel()};
 $('intOpenLive').onclick=()=>intGo('languages');$('intOpenNearby').onclick=()=>intGo('nearby');$('intOpenListen').onclick=()=>intGo('listening');$('intOpenSolo').onclick=()=>intGo('solo');$('oneSwap').onclick=()=>{const a=$('oneSource'),b=$('oneTarget'),v=a.value;a.value=b.value;b.value=v;applyOnePhone()};$('oneApply').onclick=()=>applyOnePhone();$('intHistory').onclick=()=>intGo('history');$('intSettings').onclick=()=>intGo('settings','voices');
 $('intToConnect').onclick=()=>{const speak=$('intSpeak').value,hear=$('intHear').value;if(speak===hear){$('intStatus').textContent=(intState.data.ui.startsWith('pt')?'Escolha idiomas diferentes para conversar.':'Choose two different languages.');return}intState.data.speak=speak;intState.data.hear=hear;localStorage.setItem(INTEGRATION_KEY,JSON.stringify(intState.data));updateIntPrefs();intGo('connect')};
