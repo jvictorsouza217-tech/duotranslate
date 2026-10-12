@@ -4,6 +4,7 @@
   "main": "cloudflare/voice-worker-test.js",
   "compatibility_date": "2026-10-12",
   "workers_dev": true,
+  "services": [{ "binding": "DUO_ACCESS_SERVICE", "service": "duotranslate-ai" }],
   "ratelimits": [
     {
       "name": "VOICE_LIMITER",

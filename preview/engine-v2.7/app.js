@@ -336,6 +336,20 @@ el.code.addEventListener('input',()=>{el.code.value=normalized(el.code.value);})
 el.code.addEventListener('keydown',e=>{if(e.key==='Enter')joinRoom();});
 el.leave.addEventListener('click',exitRoom);
 el.copy.addEventListener('click',async()=>{
+ if(window.DuoAccess){
+  const link=window.DuoAccess.invite(state.room);
+  try{
+   // Keep clipboard activation within the click; the invite is generated asynchronously.
+   if(window.ClipboardItem&&navigator.clipboard?.write){
+    await navigator.clipboard.write([new ClipboardItem({'text/plain':link.then(value=>new Blob([value],{type:'text/plain'}))})]);
+   }else{await navigator.clipboard.writeText(await link);}
+   notify('Convite copiado!');
+  }catch(e){
+   try{const value=await link;window.prompt('Copie este convite para compartilhar o acesso:',value);}
+   catch(error){notify(String(error.message||'Não foi possível criar o convite.'),true);}
+  }
+  return;
+ }
  const invite=new URL('../v2.7/?room='+encodeURIComponent(state.room),location.href).href;
  try{await navigator.clipboard.writeText(invite);notify('Convite copiado!');}
  catch(e){notify('Compartilhe o código '+state.room);}

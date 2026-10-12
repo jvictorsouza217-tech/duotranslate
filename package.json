@@ -4,7 +4,8 @@
   "private": true,
   "description": "Cloudflare Worker para o DuoTranslate; frontend estático continua no GitHub Pages",
   "scripts": {
-    "deploy": "wrangler deploy"
+    "deploy": "wrangler deploy",
+    "test:access": "node --test tests/access.test.mjs"
   },
   "devDependencies": {
     "wrangler": "4.135.0"

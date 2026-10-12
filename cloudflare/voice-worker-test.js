@@ -4,10 +4,11 @@
  * Binding VOICE_LIMITER is REQUIRED; do not deploy without 4/min shared rate limit.
  * ElevenLabs calls use credits, including free-tier credits. Privacy: audio/text sent to ElevenLabs.
  */
+import {individualAccess} from './access-auth.js';
 const ORIGIN='https://jvictorsouza217-tech.github.io';
 const API='https://api.elevenlabs.io';
 const LANGS=new Set(['pt-BR','fr-FR','en-US','es-ES','it-IT','de-DE','ar-SA','zh-CN','nl-NL','pl-PL','ro-RO','uk-UA','ru-RU','tr-TR']);
-function cors(){return {'Access-Control-Allow-Origin':ORIGIN,'Access-Control-Allow-Headers':'Content-Type, X-Duo-Pin','Access-Control-Allow-Methods':'POST,OPTIONS,GET','Vary':'Origin','Cache-Control':'no-store'}}
+function cors(){return {'Access-Control-Allow-Origin':ORIGIN,'Access-Control-Allow-Headers':'Content-Type, X-Duo-Pin, Authorization','Access-Control-Allow-Methods':'POST,OPTIONS,GET','Vary':'Origin','Cache-Control':'no-store'}}
 function json(obj,status=200){return new Response(JSON.stringify(obj),{status,headers:{'Content-Type':'application/json; charset=utf-8',...cors()}})}
 async function validPin(got,expected){
  if(!got||!expected||got.length>200||expected.length>200)return false;
@@ -20,10 +21,12 @@ export default {
   if(origin && origin!==ORIGIN)return new Response('Forbidden',{status:403});
   if(req.method==='OPTIONS')return new Response(null,{status:204,headers:cors()});
   const path=new URL(req.url).pathname;
-  if(req.method==='GET'&&path==='/health')return json({service:'DuoTranslate optional ElevenLabs test',configured:!!(env.ELEVENLABS_API_KEY&&env.DUO_ACCESS_CODE&&env.ENABLE_VOICE_TEST==='yes'&&env.VOICE_LIMITER),maxCharacters:220,ratePerMinute:4});
+  if(req.method==='GET'&&path==='/health')return json({service:'DuoTranslate optional ElevenLabs test',configured:!!(env.ELEVENLABS_API_KEY&&env.DUO_ACCESS_CODE&&env.ENABLE_VOICE_TEST==='yes'&&env.VOICE_LIMITER),maxCharacters:220,ratePerMinute:4,individualAccess:!!env.DUO_ACCESS_SERVICE,accessVersion:1});
   if(req.method!=='POST'||!['/tts','/voices'].includes(path))return json({error:'Not found.'},404);
   if(!env.ELEVENLABS_API_KEY||!env.DUO_ACCESS_CODE||env.ENABLE_VOICE_TEST!=='yes'||!env.VOICE_LIMITER)return json({error:'ElevenLabs não ativado ou limite de uso não configurado.'},503);
-  if(!await validPin(req.headers.get('X-Duo-Pin'),env.DUO_ACCESS_CODE))return json({error:'Código de acesso inválido.'},401);
+  const access=await individualAccess(req,env,true);
+  if(access?.error)return json({error:access.error},access.status);
+  if(!access && !await validPin(req.headers.get('X-Duo-Pin'),env.DUO_ACCESS_CODE))return json({error:'Código de acesso inválido.'},401);
   const allowed=await env.VOICE_LIMITER.limit({key:'duotranslate-voice-demo-shared'});
   if(!allowed.success)return json({error:'Limite de testes de voz: aguarde um minuto.'},429);
   if(!String(req.headers.get('Content-Type')||'').includes('application/json'))return json({error:'Expected JSON.'},415);

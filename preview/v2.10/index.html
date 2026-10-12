@@ -397,8 +397,10 @@ body[data-duo-int-view="listening"] #intOnePhoneOptions .int-actions{display:non
   </div>
 </section>
 
+<script src="../../access/client.js?v=1"></script>
 <script>
-(()=>{'use strict';
+(async()=>{'use strict';
+await window.DuoAccess?.ready;
 const langs=[['pt-BR','🇧🇷 Português','pt','Olá.','Vamos conversar?'],['fr-FR','🇫🇷 Français','fr','Bonjour.','On se parle ?'],['en-US','🇬🇧 English','en','Hello.','Let’s talk.'],['es-ES','🇪🇸 Español','es','Hola.','¿Hablamos?'],['it-IT','🇮🇹 Italiano','it','Ciao.','Parliamo?'],['de-DE','🇩🇪 Deutsch','de','Hallo.','Sprechen wir?'],['ar-SA','🇸🇦 العربية','ar','مرحباً.','لنتحدث.'],['zh-CN','🇨🇳 中文','zh','你好。','我们聊聊吧。'],['nl-NL','🇳🇱 Nederlands','nl','Hallo.','Zullen we praten?'],['pl-PL','🇵🇱 Polski','pl','Cześć.','Porozmawiajmy.'],['ro-RO','🇷🇴 Română','ro','Salut.','Hai să vorbim.'],['uk-UA','🇺🇦 Українська','uk','Привіт.','Поговорімо.'],['ru-RU','🇷🇺 Русский','ru','Привет.','Поговорим.'],['tr-TR','🇹🇷 Türkçe','tr','Merhaba.','Konuşalım.']];
 const TRUSTED_CODES_KEY='duotranslate.trusted.access.v210';
 function readTrustedCodes(){try{return JSON.parse(localStorage.getItem(TRUSTED_CODES_KEY)||'{}')||{}}catch(e){return {}}}
@@ -705,6 +707,7 @@ function renderPremium(){
  $('premiumPin').value=sessionStorage.getItem('duotranslate.voice.pin.session')||'';
  $('premiumEnable').checked=cfg.enabled===true;
  $('premiumVoiceId').value=(cfg.voices||{})[$('premiumLanguage').value]||'';
+ window.DuoAccess?.renderStatus();
 }
 function savePremium(){
  const url=$('premiumUrl').value.trim(),pin=$('premiumPin').value.trim();
@@ -859,7 +862,7 @@ async function quickVoiceSample(){
    if(url.protocol!=='https:'||url.username||url.password||url.search||url.hash)throw Error('Endereço HTTPS inválido.');
    const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),17000);
    let response;
-   try{response=await fetch(url.href.replace(/\/+$/,'')+'/tts',{
+   try{response=await (window.DuoAccess?.fetch || fetch)(url.href.replace(/\/+$/,'')+'/tts',{
     method:'POST',headers:{'Content-Type':'application/json','X-Duo-Pin':pin},
     body:JSON.stringify({text:phrase,lang,voiceId}),signal:controller.signal
    })}finally{clearTimeout(timer)}
@@ -898,7 +901,7 @@ for(const v of saved){const row=document.createElement('div');row.className='int
 function enterIntegrated(data,fromReload=false){if(!data)return;intState.data=data;document.body.classList.add('integrated-active');$('integratedApp').classList.remove('integration-hidden');for(const id of ['intSpeak','intHear','intSettingSpeak','intSettingHear']){$(id).innerHTML=opts}const uiOpts=langs.map(x=>`<option value="${x[0]}">${x[1]}</option>`).join('');$('intInterfaceLang').innerHTML=uiOpts;intState.view=/^[A-Z0-9]{8}$/.test(String(new URLSearchParams(location.search).get('room')||'').toUpperCase())?'connect':'home';$('oneSource').innerHTML=opts;$('oneTarget').innerHTML=opts;$('oneSource').value=data.hear;$('oneTarget').value=data.speak;renderInt();
 const frame=$('duoRealFrame');if(!frame.getAttribute('src')||frame.getAttribute('src')==='about:blank'){frame.addEventListener('load',()=>{intState.frameReady=false;intState.frameObserver?.disconnect();intState.frameObserver=null;applyPrefsToEmbeddedBeta(intState.data);
  const code=readTrustedCodes().gemini,doc=integrateFrameDoc(),field=doc?.getElementById('aiWorkerPin');
- if(code&&field&&!field.value){field.value=code;field.dispatchEvent(new doc.defaultView.Event('change',{bubbles:true}));}}, {once:true});const roomId=String(new URLSearchParams(location.search).get('room')||'').toUpperCase();const roomParam=/^[A-Z0-9]{8}$/.test(roomId)?'?room='+roomId:'';frame.src=new URL('../engine-v2.7/'+roomParam,window.location.href).href}else if(!fromReload)applyPrefsToEmbeddedBeta(data);window.scrollTo(0,0)}
+ if(code&&field&&!field.value){field.value=code;field.dispatchEvent(new doc.defaultView.Event('change',{bubbles:true}));}}, {once:true});const roomId=String(new URLSearchParams(location.search).get('room')||'').toUpperCase();const roomParam=/^[A-Z0-9]{8}$/.test(roomId)?'?room='+roomId+'&duoAccess=1':'?duoAccess=1';frame.src=new URL('../engine-v2.7/'+roomParam,window.location.href).href}else if(!fromReload)applyPrefsToEmbeddedBeta(data);window.scrollTo(0,0)}
 function leaveIntegrated(backToStart){const frame=$('duoRealFrame');intState.frameObserver?.disconnect();intState.frameObserver=null;intState.frameReady=false;frame.src='about:blank';document.body.classList.remove('integrated-active');$('integratedApp').classList.add('integration-hidden');show(backToStart?0:2)}
 $('premiumSave').onclick=savePremium;
 $('premiumTest').onclick=testPremiumVoice;
@@ -935,6 +938,7 @@ function updateTrustedMessage(message){
  $('trustedStatus').textContent=message||(saved.gemini||saved.voice?'Acesso lembrado para: '+[saved.gemini?'Gemini':null,saved.voice?'ElevenLabs':null].filter(Boolean).join(' e ')+'.':'Nenhum código salvo de forma permanente.');
 }
 $('trustedSave').onclick=()=>{
+ if(window.DuoAccess?.active){window.DuoAccess.remember();updateTrustedMessage('Seu acesso individual será lembrado neste dispositivo.');return;}
  const old=readTrustedCodes(),doc=integrateFrameDoc();
  const gemini=sessionStorage.getItem('duotranslate.pin.session.v1')||doc?.getElementById('aiWorkerPin')?.value||old.gemini||'';
  const voice=sessionStorage.getItem('duotranslate.voice.pin.session')||$('premiumPin')?.value||old.voice||'';
@@ -943,9 +947,11 @@ $('trustedSave').onclick=()=>{
  updateTrustedMessage();
 };
 $('trustedForget').onclick=()=>{localStorage.removeItem(TRUSTED_CODES_KEY);
+ window.DuoAccess?.forget();
  updateTrustedMessage('Códigos guardados apagados. Sua sessão atual não foi interrompida.')};
 updateTrustedMessage();
 const previouslyCompleted=persistedIntegration();if(previouslyCompleted)enterIntegrated(previouslyCompleted,true);
+window.DuoAccess?.renderStatus();
 })();
 </script>
 </body></html>

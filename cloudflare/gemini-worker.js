@@ -6,6 +6,9 @@
  *   DUO_ACCESS_CODE  = senha longa escolhida por você (pelo menos 12 caracteres)
  * Publique este Worker e configure https://NOME.WORKERS.DEV no DuoTranslate.
  */
+import {handleAccessRequest} from './access-store.js';
+import {individualAccess} from './access-auth.js';
+export {DuoAccessStore} from './access-store.js';
 const APP_ORIGIN = 'https://jvictorsouza217-tech.github.io';
 const DEFAULT_MODEL = 'gemini-3.5-flash-lite';
 const MODEL_API = 'https://generativelanguage.googleapis.com/v1beta/models/';
@@ -15,7 +18,7 @@ function cors(origin){
  return {
   'Access-Control-Allow-Origin': APP_ORIGIN,
   'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
-  'Access-Control-Allow-Headers': 'Content-Type, X-Duo-Pin',
+  'Access-Control-Allow-Headers': 'Content-Type, X-Duo-Pin, Authorization',
   'Access-Control-Max-Age':'86400',
   'Cache-Control':'no-store',
   'Vary':'Origin'
@@ -43,13 +46,16 @@ export default {
    return new Response('Origem não permitida.',{status:403});
   const url=new URL(request.url);
   if(request.method==='OPTIONS')return new Response(null,{status:204,headers:cors(origin)});
+  if(url.pathname.startsWith('/access/'))return handleAccessRequest(request,env,sameSecret);
   if(request.method==='GET' && url.pathname==='/health')
-   return json({ok:true,service:'DuoTranslate AI',version:'1.7.0',configured:!!(env.GEMINI_API_KEY&&env.DUO_ACCESS_CODE),model:DEFAULT_MODEL});
+   return json({ok:true,service:'DuoTranslate AI',version:'1.7.0',configured:!!(env.GEMINI_API_KEY&&env.DUO_ACCESS_CODE),model:DEFAULT_MODEL,individualAccess:!!env.DUO_ACCESS_STORE,accessVersion:1});
   if(request.method!=='POST' || (url.pathname!=='/translate' && url.pathname!=='/analyze'))
    return json({error:'Rota não encontrada.'},404);
   if(!env.GEMINI_API_KEY||!env.DUO_ACCESS_CODE)
    return json({error:'Faltam os Secrets GEMINI_API_KEY e/ou DUO_ACCESS_CODE no Cloudflare.'},503);
-  if(!(await sameSecret(request.headers.get('X-Duo-Pin'),env.DUO_ACCESS_CODE)))
+  const access=await individualAccess(request,env);
+  if(access?.error)return json({error:access.error},access.status);
+  if(!access && !(await sameSecret(request.headers.get('X-Duo-Pin'),env.DUO_ACCESS_CODE)))
    return json({error:'Código de acesso inválido. Confira DUO_ACCESS_CODE.'},401);
   // Limite aproximado por localidade Cloudflare, compartilhado entre usuários deste protótipo.
   // Não equivale à cota global do Gemini e não substitui autenticação por usuário.

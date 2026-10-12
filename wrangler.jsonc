@@ -4,6 +4,11 @@
   "main": "cloudflare/gemini-worker.js",
   "compatibility_date": "2026-10-12",
   "workers_dev": true,
+  "keep_vars": true,
+  "durable_objects": {
+    "bindings": [{ "name": "DUO_ACCESS_STORE", "class_name": "DuoAccessStore" }]
+  },
+  "migrations": [{ "tag": "duo-individual-access-v1", "new_sqlite_classes": ["DuoAccessStore"] }],
   "ratelimits": [
     {
       "name": "AI_RATE_LIMITER",

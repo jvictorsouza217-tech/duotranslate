@@ -50,7 +50,7 @@ async function translate(text,source,target){
  const timeout=setTimeout(()=>controller.abort(),20000);
  let response;
  try{
-  response=await fetch(url,{
+  response=await (window.DuoAccess?.fetch || fetch)(url,{
    method:'POST',
    mode:'cors',
    headers:{'Content-Type':'application/json','X-Duo-Pin':access},
@@ -79,7 +79,7 @@ async function analyze(original,translation,source,target){
  const timeout=setTimeout(()=>controller.abort(),20000);
  let response;
  try{
-  response=await fetch(base.replace(/\/translate$/,'/analyze'),{
+  response=await (window.DuoAccess?.fetch || fetch)(base.replace(/\/translate$/,'/analyze'),{
    method:'POST',
    mode:'cors',
    headers:{'Content-Type':'application/json','X-Duo-Pin':access},

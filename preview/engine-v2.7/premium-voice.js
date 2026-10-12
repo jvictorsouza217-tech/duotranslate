@@ -21,7 +21,7 @@ async function speak(text,lang){
  if(text.length>220)throw Error('Frase longa para o limite experimental; usando voz do dispositivo.');
  const u=endpoint(),controller=new AbortController(),timer=setTimeout(()=>controller.abort(),17000);
  let r;
- try{r=await fetch(u+'/tts',{method:'POST',headers:{'Content-Type':'application/json','X-Duo-Pin':pin()},body:JSON.stringify({text,lang,voiceId:conf.voices[lang]}),signal:controller.signal})}
+ try{r=await (window.DuoAccess?.fetch || fetch)(u+'/tts',{method:'POST',headers:{'Content-Type':'application/json','X-Duo-Pin':pin()},body:JSON.stringify({text,lang,voiceId:conf.voices[lang]}),signal:controller.signal})}
  finally{clearTimeout(timer)}
  if(!r.ok){let d;try{d=await r.json()}catch(e){}throw Error(d?.error||'Serviço de voz indisponível (HTTP '+r.status+').')}
  const audioBlob=await r.blob();const obj=URL.createObjectURL(audioBlob);
@@ -32,6 +32,6 @@ window.DuoPremiumVoice={
  enabled,speak,
  get:()=>({...conf,pinConfigured:!!pin()}),
  configure(config){conf.enabled=config.enabled===true;conf.url=String(config.url||'').trim();conf.voices={...config.voices};if(typeof config.pin==='string'){try{sessionStorage.setItem(PIN,config.pin)}catch(e){}}save()},
- async voices(){const r=await fetch(endpoint()+'/voices',{method:'POST',headers:{'Content-Type':'application/json','X-Duo-Pin':pin()},body:'{}'});const d=await r.json();if(!r.ok)throw Error(d.error||'Failed loading voices');return d.voices||[]}
+ async voices(){const r=await (window.DuoAccess?.fetch || fetch)(endpoint()+'/voices',{method:'POST',headers:{'Content-Type':'application/json','X-Duo-Pin':pin()},body:'{}'});const d=await r.json();if(!r.ok)throw Error(d.error||'Failed loading voices');return d.voices||[]}
 };
 })();
