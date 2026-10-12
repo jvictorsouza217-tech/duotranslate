@@ -209,7 +209,7 @@ function apply(next){
  if(voiceSummary){
   const badge=voiceSummary.querySelector('span');voiceSummary.replaceChildren(document.createTextNode(t('voicePanel')+' '));if(badge)voiceSummary.append(badge);
  }
- if(liveStart && !liveStart.disabled && !/Parar|Stop|Arrêter|Detener|Ferma|Stoppen|إيقاف|停止/.test(liveStart.textContent))liveStart.textContent=t('startDuo');
+ if(liveStart && !/Parar|Stop|Arrêter|Detener|Ferma|Stoppen|إيقاف|停止/.test(liveStart.textContent))liveStart.textContent=t('startDuo');
  if(soloStart && !/Parar|Stop|Arrêter|Detener|Ferma|Stoppen|إيقاف|停止/.test(soloStart.textContent))soloStart.textContent=t('startListening');
  if(micBadge)micBadge.textContent=t(micBadge.classList.contains('active')?'micOn':'micOff');
  if(roomLabel && !roomLabel.textContent.includes('Conectados')){ /* dynamic connection messages are handled by app.js */ }
