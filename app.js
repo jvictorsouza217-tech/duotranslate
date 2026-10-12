@@ -133,8 +133,8 @@ function useConnection(conn){
   if(!data || typeof data!=='object' || state.conn!==conn)return;
   if(data.type==='hello'){
    if(!Object.prototype.hasOwnProperty.call(LANG,data.lang))return;
-   if(!Object.prototype.hasOwnProperty.call(LANG,data.hear))return;
-   state.other=data.lang;state.otherHear=data.hear;view();
+   const otherHear=Object.prototype.hasOwnProperty.call(LANG,data.hear)?data.hear:data.lang; // aparelhos ainda em v1.5
+   state.other=data.lang;state.otherHear=otherHear;view();
   }else if(data.type==='speech' && typeof data.translation==='string'){
    if(data.target!==state.hearLanguage)return;
    const translated=data.translation.trim().slice(0,600);
