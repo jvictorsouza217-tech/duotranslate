@@ -64,9 +64,10 @@ async function translate(text,source,target){
  }finally{clearTimeout(timeout);}
  let data;
  try{data=await response.json();}catch(e){throw Error('Resposta inválida do Worker; confira a publicação.');}
- if(!response.ok)throw Error(typeof data?.error==='string'?data.error:'Falha do tradutor IA (HTTP '+response.status+').');
+ if(!response.ok){window.DuoUsage?.record({engine:'gemini',action:'translation',ok:false});throw Error(typeof data?.error==='string'?data.error:'Falha do tradutor IA (HTTP '+response.status+').');}
  const result=String(data?.translation||'').trim();
  if(!result)throw Error('A IA não devolveu uma tradução.');
+ window.DuoUsage?.record({engine:'gemini',action:'translation',ok:true,usage:data?.usage});
  return result.slice(0,900);
 }
 
@@ -92,9 +93,10 @@ async function analyze(original,translation,source,target){
  }finally{clearTimeout(timeout);}
  let data;
  try{data=await response.json();}catch(e){throw Error('Resposta inválida do servidor de análise.');}
- if(!response.ok)throw Error(String(data?.error||'Análise indisponível (HTTP '+response.status+').'));
+ if(!response.ok){window.DuoUsage?.record({engine:'gemini',action:'analysis',ok:false});throw Error(String(data?.error||'Análise indisponível (HTTP '+response.status+').'));}
  const answer=String(data?.analysis||'').trim();
  if(!answer)throw Error('A IA não retornou uma avaliação.');
+ window.DuoUsage?.record({engine:'gemini',action:'analysis',ok:true,usage:data?.usage});
  return answer;
 }
 ui.provider.addEventListener('change',save);
