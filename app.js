@@ -20,7 +20,7 @@ const state = {
  restart:null, toastTimer:null, transQueue:Promise.resolve(), session:0, netErrors:0
 };
 function connected(){return !!(state.conn && state.conn.open && state.other && state.otherHear);}
-function status(s){el.listenStatus.textContent=s;}
+function status(s){el.listenStatus.textContent=window.DuoI18n?.localizeStatus(s)||s;}
 function notify(s, error=false){
  clearTimeout(state.toastTimer);
  el.toast.textContent=s;
@@ -32,8 +32,8 @@ function view(){
  const inRoom=!!state.room, ok=connected();
  if(el.direction){
   const to=ok?state.otherHear:state.hearLanguage;
-  el.direction.textContent='Você fala '+LANG[state.language].name+' · A outra pessoa ouvirá '+LANG[to].name+
-   ' · Você ouvirá em '+LANG[state.hearLanguage].name;
+  el.direction.textContent='🎙 '+LANG[state.language].flag+' '+LANG[state.language].name+
+   ' → '+LANG[to].flag+' '+LANG[to].name+' · 🎧 '+LANG[state.hearLanguage].flag+' '+LANG[state.hearLanguage].name;
  }
  if(el.hearSelect)el.hearSelect.value=state.hearLanguage;
  el.roomSetup.classList.toggle('hidden',inRoom);
@@ -43,8 +43,8 @@ function view(){
  el.send.disabled=!ok;
  el.micOrb.classList.toggle('active',state.listen);
  el.micBadge.classList.toggle('active',state.listen);
- el.micBadge.textContent=state.listen?'Microfone ligado':'Microfone desligado';
- el.listen.textContent=state.listen?'■ Parar conversa':'🎙 Ativar conversa';
+ el.micBadge.textContent=window.DuoI18n?.t(state.listen?'micOn':'micOff')||(state.listen?'Microfone ligado':'Microfone desligado');
+ el.listen.textContent=state.listen?(window.DuoI18n?.t('stopDuo')||'■ Parar conversa'):(window.DuoI18n?.t('startDuo')||'🎙 Ativar conversa');
  el.connection.classList.toggle('connected',ok);
  el.connection.replaceChildren();
  const dot=document.createElement('span');
