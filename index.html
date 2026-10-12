@@ -8,35 +8,35 @@
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="icon" href="icon.svg" type="image/svg+xml">
   <link rel="stylesheet" href="style.css">
-  <link rel="stylesheet" href="solo.css">
-  <link rel="stylesheet" href="voice-settings.css">
-  <link rel="stylesheet" href="ai-translation.css">
-  <link rel="stylesheet" href="history.css">
-  <link rel="stylesheet" href="usage.css">
+  <link rel="stylesheet" href="solo.css?v=1.6">
+  <link rel="stylesheet" href="voice-settings.css?v=1.6">
+  <link rel="stylesheet" href="ai-translation.css?v=1.6">
+  <link rel="stylesheet" href="history.css?v=1.6">
+  <link rel="stylesheet" href="usage.css?v=1.6">
   <title>DuoTranslate · Conversa sem fronteiras</title>
   <script src="https://unpkg.com/peerjs@1.5.5/dist/peerjs.min.js" defer></script>
-  <script src="languages.js" defer></script>
-  <script src="usage.js" defer></script>
-  <script src="voice-settings.js" defer></script>
-  <script src="ai-translation.js" defer></script>
-  <script src="history.js" defer></script>
-  <script src="app.js" defer></script>
-  <script src="solo.js" defer></script>
-  <script src="interface-i18n.js" defer></script>
+  <script src="languages.js?v=1.6" defer></script>
+  <script src="usage.js?v=1.6" defer></script>
+  <script src="voice-settings.js?v=1.6" defer></script>
+  <script src="ai-translation.js?v=1.6" defer></script>
+  <script src="history.js?v=1.6" defer></script>
+  <script src="app.js?v=1.6" defer></script>
+  <script src="solo.js?v=1.6" defer></script>
+  <script src="interface-i18n.js?v=1.6" defer></script>
 </head>
 <body>
   <div class="glow glow-one"></div><div class="glow glow-two"></div>
   <div class="shell">
     <header class="topbar">
       <a class="brand" href="./" aria-label="DuoTranslate - início"><span class="brandmark">D<span>↔</span></span><span>Duo<span class="brand-light">Translate</span></span></a>
-      <span class="version">BETA 1.5</span>
+      <span class="version">BETA 1.6</span>
     </header>
 
     <div class="ui-lang-group" style="margin:12px 0 6px">
       <label for="interfaceLanguage">Idioma do aplicativo</label>
       <select id="interfaceLanguage" class="ui-lang-select">
         <option value="pt">Português</option><option value="en">English</option>
-        <option value="fr">Français</option><option value="es">Español</option>
+        <option value="fr">Français</option><option value="es">Español</option><option value="it">Italiano</option><option value="de">Deutsch</option><option value="ar">العربية</option><option value="zh">中文</option>
       </select>
     </div>
     <main>
@@ -83,11 +83,12 @@
 
       <section class="panel solo-panel" aria-labelledby="solo-title" id="solo">
         <div class="panel-heading solo-heading"><span class="step">★</span><div><h2 id="solo-title">Modo teste individual</h2><p class="solo-kicker">Um celular · sem sala · versão 1.1</p></div></div>
-        <p class="solo-intro">Teste a tradução sozinho antes de conversar com outra pessoa. O celular escuta francês e lê a tradução em português, ou faz o inverso.</p>
+        <p class="solo-intro">Escolha livremente o idioma falado e o idioma da tradução. O microfone escuta a língua de origem e a tradução é reproduzida na língua de destino.</p>
         <label class="solo-label" for="soloSource">Idioma que o celular vai ouvir</label>
         <select id="soloSource" class="solo-select" aria-label="Idioma original"><option value="pt-BR">🇧🇷 Português</option><option value="fr-FR" selected>🇫🇷 Français</option><option value="en-US">🇺🇸 English</option><option value="es-ES">🇪🇸 Español</option><option value="it-IT">🇮🇹 Italiano</option><option value="de-DE">🇩🇪 Deutsch</option><option value="ar-SA">🇸🇦 العربية</option><option value="zh-CN">🇨🇳 中文</option></select>
-        <label class="solo-label" for="soloTarget">Idioma para traduzir</label>
+        <label class="solo-label" for="soloTarget">Idioma de destino (o que quero ouvir)</label>
         <select id="soloTarget" class="solo-select" aria-label="Idioma de destino"><option value="pt-BR" selected>🇧🇷 Português</option><option value="fr-FR">🇫🇷 Français</option><option value="en-US">🇺🇸 English</option><option value="es-ES">🇪🇸 Español</option><option value="it-IT">🇮🇹 Italiano</option><option value="de-DE">🇩🇪 Deutsch</option><option value="ar-SA">🇸🇦 العربية</option><option value="zh-CN">🇨🇳 中文</option></select>
+        <p id="soloDirection" class="direction-help" role="status">Francês → Português</p>
         <div class="solo-options">
           <button type="button" id="soloToggle" class="primary-btn">🎙 Começar a ouvir</button>
           <button type="button" id="soloSample" class="solo-secondary">▶ Testar frase de exemplo</button>
@@ -158,7 +159,10 @@
           <button type="button" class="language" data-lang="ar-SA" aria-pressed="false"><span class="flag">🇸🇦</span><span>العربية</span><small>العربية الفصحى</small></button>
           <button type="button" class="language" data-lang="zh-CN" aria-pressed="false"><span class="flag">🇨🇳</span><span>中文</span><small>普通话</small></button>
         </div>
-        <p class="hint">Escolha a língua <strong>que você fala</strong>, não a que deseja ouvir. O app traduz para a língua do outro celular.</p>
+        <p class="hint" id="duoSourceHint">Primeiro escolha a língua que você fala. Depois escolha abaixo a língua em que deseja ouvir a resposta.</p>
+        <label class="solo-label" for="duoHearLanguage">Idioma em que quero ouvir a tradução</label>
+        <select id="duoHearLanguage" class="solo-select"><option value="pt-BR">🇧🇷 Português</option><option value="fr-FR" selected>🇫🇷 Français</option><option value="en-US">🇺🇸 English</option><option value="es-ES">🇪🇸 Español</option><option value="it-IT">🇮🇹 Italiano</option><option value="de-DE">🇩🇪 Deutsch</option><option value="ar-SA">🇸🇦 العربية</option><option value="zh-CN">🇨🇳 中文</option></select>
+        <p id="duoDirection" class="direction-help" role="status">Você fala português · Ouvirá em francês</p>
       </section>
 
       <section class="panel" id="connectPanel" aria-labelledby="room-title">
@@ -174,7 +178,7 @@
         <div id="roomActive" class="hidden">
           <div class="room-meta"><span id="roomLabel">Código da sala</span><span id="connectionState" class="state-pill"><span class="state-dot"></span>Aguardando</span></div>
           <div class="room-code-row"><strong id="roomCode" class="room-code">········</strong><button type="button" id="copyBtn" class="icon-btn" aria-label="Copiar convite" title="Copiar convite">↗ Copiar convite</button></div>
-          <p class="hint" id="roomHelp">Compartilhe este código com o outro celular.</p>
+          <p class="hint" id="roomHelp">Compartilhe este código com o outro celular. Cada pessoa seleciona o idioma que fala e o que deseja ouvir.</p>
           <button type="button" id="leaveBtn" class="text-btn">Sair da sala</button>
         </div>
       </section>
