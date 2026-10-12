@@ -1,4 +1,4 @@
-# DuoTranslate — protótipo 1.6
+# DuoTranslate — protótipo 1.7
 
 **Objetivo:** duas pessoas se comunicarem em português (Brasil) e francês (França), cada uma usando **seu próprio celular e fone Bluetooth comum**. A pessoa fala ao microfone do celular/fone; o outro aparelho reproduz a versão traduzida em voz alta.
 
@@ -13,6 +13,22 @@
 - Leitura em voz alta da tradução recebida com `speechSynthesis` — deve usar o dispositivo de saída padrão do telefone, incluindo Bluetooth quando roteado pelo sistema.
 - Botões para testar o áudio e para digitar frases manualmente se o reconhecimento de voz não funcionar.
 - Ao reproduzir uma tradução, o app tenta pausar temporariamente a captação para evitar que o áudio seja novamente traduzido.
+
+## Versão 1.7 — cobertura europeia de 14 idiomas
+
+**Cópia de segurança:** `stable-v1.6` guarda a versão anterior.
+
+**Novos idiomas:** neerlandês (Dutch, `nl-NL`), polonês (`pl-PL`), romeno (`ro-RO`), ucraniano (`uk-UA`), russo (`ru-RU`) e turco (`tr-TR`). Os idiomas existentes continuam: português, francês, inglês, espanhol, italiano, alemão, árabe e chinês mandarim. Total: **14 idiomas e 182 pares direcionais diferentes**.
+
+**No DuoTranslate:** cada um dos 14 pode ser escolhido como idioma falado, idioma ouvido e idioma da interface. Gemini/Cloudflare aceita os 14 no esquema e nas instruções de tradução. MyMemory usa códigos ISO correspondentes como tradutor alternativo, mas a disponibilidade de cada par na API externa precisa ser testada. Origem e destino iguais são bloqueados, como antes.
+
+**Voz:** novo seletor de teste e escolha de voz instalada no navegador para todos os 14 idiomas. As vozes naturais **ElevenLabs ainda não estão integradas**. A síntese e reconhecimento de fala dependem das vozes/serviços presentes no navegador e no sistema operacional: ver a opção de idioma não garante áudio naquele idioma, especialmente em aparelhos sem pacote de voz. O aplicativo avisa quando não encontra nenhuma voz específica.
+
+**Interface:** os seis idiomas adicionais traduzem os botões, títulos e textos principais da interface, além dos oito idiomas anteriores. Avisos técnicos e textos complementares ainda podem aparecer em inglês ou português nesta beta. Os valores das escolhas de idioma não são traduzidos, só os rótulos. Não mexemos em APK, IPA ou lojas.
+
+**Compatibilidade ElevenLabs:** Multilingual v2 (29 idiomas) e Flash v2.5 (32 idiomas) incluem todos os 14, conforme documentação publicada da ElevenLabs. Isso é suporte para síntese de voz por API, não tradução de texto. Escolha de uma voz com sotaque apropriado e integração segura da API ficam para etapa separada. https://elevenlabs.io/docs/overview/capabilities/text-to-speech
+
+**Testes:** validar primeiro Gemini com pares europeus como Português → Neerlandês, Neerlandês → Polonês e Ucraniano → Francês; testar reconhecimento e reprodução em PC, Android e iPhone separadamente.
 
 ## Versão 1.6 — correção dos pares e oito idiomas na interface
 
