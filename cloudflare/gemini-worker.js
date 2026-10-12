@@ -44,7 +44,7 @@ export default {
   const url=new URL(request.url);
   if(request.method==='OPTIONS')return new Response(null,{status:204,headers:cors(origin)});
   if(request.method==='GET' && url.pathname==='/health')
-   return json({ok:true,configured:!!(env.GEMINI_API_KEY&&env.DUO_ACCESS_CODE),model:DEFAULT_MODEL});
+   return json({ok:true,service:'DuoTranslate AI',version:'1.3.1',configured:!!(env.GEMINI_API_KEY&&env.DUO_ACCESS_CODE),model:DEFAULT_MODEL});
   if(request.method!=='POST' || url.pathname!=='/translate')
    return json({error:'Rota não encontrada.'},404);
   if(!env.GEMINI_API_KEY||!env.DUO_ACCESS_CODE)
