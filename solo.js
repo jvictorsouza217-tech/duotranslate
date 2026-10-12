@@ -193,13 +193,6 @@ function changedLanguage(which){
 }
 ui.source.addEventListener('change',()=>changedLanguage('source'));
 ui.target.addEventListener('change',()=>changedLanguage('target'));
-/* legacy: language change handler removed */
-/*ui.source.addEventListener('change',()=>{
- if(s.enabled)stop();
- s.last=null;ui.replay.disabled=true;ui.input.placeholder=ui.source.value==='fr-FR'
-  ? 'Digite uma frase em francês...' : 'Digite uma frase em português...';
- status('Escolha um teste: ouvir pelo microfone ou traduzir uma frase.');
-});*/
 ui.sample.addEventListener('click',()=>process(example()));
 ui.form.addEventListener('submit',e=>{e.preventDefault();if(s.busy)return;const t=ui.input.value.trim();if(t)process(t);});
 ui.replay.addEventListener('click',()=>{
