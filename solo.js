@@ -13,9 +13,9 @@ const languages = window.DuoLanguages || {};
 const s = {enabled:false,busy:false,rec:null,timer:null,epoch:0,errors:0,last:null,utterance:null};
 const target = () => ui.target.value;
 const example = () => languages[ui.source.value]?.example||'Bom dia! Como você está?';
-function status(message){ui.status.textContent=message;}
+function status(message){ui.status.textContent=window.DuoI18n?.localizeStatus(message)||message;}
 function render(){
- ui.toggle.textContent=s.enabled?'■ Parar de ouvir':'🎙 Começar a ouvir';
+ ui.toggle.textContent=s.enabled?(window.DuoI18n?.t('stopListening')||'■ Parar de ouvir'):(window.DuoI18n?.t('startListening')||'🎙 Começar a ouvir');
  ui.toggle.classList.toggle('solo-on',s.enabled);
  ui.sample.disabled=s.busy;
  ui.replay.disabled=!s.last || s.busy;
@@ -145,7 +145,7 @@ function startCapture(){
 async function process(input){
  const original=String(input||'').trim().slice(0,350);
  if(!original || s.busy)return;
- if(ui.source.value===ui.target.value){status('Idioma de origem e de destino iguais. Escolha duas línguas diferentes; nenhuma tradução foi enviada.');return;}
+ if(ui.source.value===ui.target.value){status('Origem e destino são iguais. Escolha idiomas diferentes antes de traduzir.');return;}
  s.busy=true;const epoch=s.epoch;
  stopCapture();render();status('Traduzindo frase...');
  try{
@@ -155,7 +155,7 @@ async function process(input){
   if(epoch!==s.epoch)return;
   s.last={text:out,lang:target()};
   addResult(original,out,false,translationMs);
-  const direction=$('soloDirection');if(direction)direction.textContent=languages[ui.source.value].name+' → '+languages[target()].name;
+  const direction=$('soloDirection');if(direction)direction.textContent=languages[ui.source.value].flag+' '+languages[ui.source.value].name+' → '+languages[target()].flag+' '+languages[target()].name;
   window.DuoHistory?.add({mode:'solo',direction:'sent',source:ui.source.value,target:target(),original,translation:out,translationMs,provider:window.DuoAI?.label()||'MyMemory'});
   status('Tradução concluída. Reproduzindo em '+languages[target()].name+'...');
   render();
@@ -192,7 +192,7 @@ function changedLanguage(){
   ?'Origem e destino são iguais. Escolha idiomas diferentes antes de traduzir.'
   :'Direção selecionada: '+languages[ui.source.value].name+' → '+languages[ui.target.value].name+'.');
  const direction=$('soloDirection');
- if(direction)direction.textContent=languages[ui.source.value].name+' → '+languages[ui.target.value].name+(same?' · escolha idiomas diferentes':'');
+ if(direction)direction.textContent=languages[ui.source.value].flag+' '+languages[ui.source.value].name+' → '+languages[ui.target.value].flag+' '+languages[ui.target.value].name+(same?' ⚠️':'');
 }
 ui.source.addEventListener('change',changedLanguage);
 ui.target.addEventListener('change',changedLanguage);
