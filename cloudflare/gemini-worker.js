@@ -9,7 +9,7 @@
 const APP_ORIGIN = 'https://jvictorsouza217-tech.github.io';
 const DEFAULT_MODEL = 'gemini-3.5-flash-lite';
 const MODEL_API = 'https://generativelanguage.googleapis.com/v1beta/models/';
-const langs = {'pt-BR':'português brasileiro','fr-FR':'francês da França'};
+const langs = {'pt-BR':'português brasileiro','fr-FR':'francês da França','en-US':'inglês americano','es-ES':'espanhol','it-IT':'italiano','de-DE':'alemão','ar-SA':'árabe padrão moderno','zh-CN':'chinês mandarim simplificado'};
 
 function cors(origin){
  return {
@@ -44,13 +44,19 @@ export default {
   const url=new URL(request.url);
   if(request.method==='OPTIONS')return new Response(null,{status:204,headers:cors(origin)});
   if(request.method==='GET' && url.pathname==='/health')
-   return json({ok:true,service:'DuoTranslate AI',version:'1.4.0',configured:!!(env.GEMINI_API_KEY&&env.DUO_ACCESS_CODE),model:DEFAULT_MODEL});
+   return json({ok:true,service:'DuoTranslate AI',version:'1.5.0',configured:!!(env.GEMINI_API_KEY&&env.DUO_ACCESS_CODE),model:DEFAULT_MODEL});
   if(request.method!=='POST' || (url.pathname!=='/translate' && url.pathname!=='/analyze'))
    return json({error:'Rota não encontrada.'},404);
   if(!env.GEMINI_API_KEY||!env.DUO_ACCESS_CODE)
    return json({error:'Faltam os Secrets GEMINI_API_KEY e/ou DUO_ACCESS_CODE no Cloudflare.'},503);
   if(!(await sameSecret(request.headers.get('X-Duo-Pin'),env.DUO_ACCESS_CODE)))
    return json({error:'Código de acesso inválido. Confira DUO_ACCESS_CODE.'},401);
+  // Limite aproximado por localidade Cloudflare, compartilhado entre usuários deste protótipo.
+  // Não equivale à cota global do Gemini e não substitui autenticação por usuário.
+  if(env.AI_RATE_LIMITER){
+   const rate=await env.AI_RATE_LIMITER.limit({key:'duotranslate-demo-shared'});
+   if(!rate.success)return json({error:'Proteção de consumo: muitas solicitações neste minuto. Tente novamente mais tarde.'},429);
+  }
   const type=request.headers.get('Content-Type')||'';
   if(!type.includes('application/json'))return json({error:'Envie JSON.'},415);
   const size=Number(request.headers.get('Content-Length')||0);
@@ -116,7 +122,8 @@ export default {
   const answer=(data?.candidates?.[0]?.content?.parts||[])
    .filter(p=>typeof p?.text==='string' && p.thought!==true).map(p=>p.text).join('').trim();
   if(!answer)return json({error:'A IA não retornou um resultado. Tente novamente.'},422);
-  if(evaluating)return json({analysis:answer.slice(0,2400),model,upstreamMs:Date.now()-started});
-  return json({translation:answer.slice(0,1000),model,upstreamMs:Date.now()-started});
+  const usage={inputTokens:Number(data.usageMetadata?.promptTokenCount||0),outputTokens:Number(data.usageMetadata?.candidatesTokenCount||0),totalTokens:Number(data.usageMetadata?.totalTokenCount||0)};
+  if(evaluating)return json({analysis:answer.slice(0,2400),model,upstreamMs:Date.now()-started,usage});
+  return json({translation:answer.slice(0,1000),model,upstreamMs:Date.now()-started,usage});
  }
 };
