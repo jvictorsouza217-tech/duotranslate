@@ -4,13 +4,16 @@
 'use strict';
 const select=document.getElementById('interfaceLanguage');
 if(!select)return;
-const codes=['pt','en','fr','es','it','de','ar','zh'];
-const names={pt:'Português',en:'English',fr:'Français',es:'Español',it:'Italiano',de:'Deutsch',ar:'العربية',zh:'中文'};
+const codes=['pt','en','fr','es','it','de','ar','zh','nl','pl','ro','uk','ru','tr'];
+const names={pt:'Português',en:'English',fr:'Français',es:'Español',it:'Italiano',de:'Deutsch',ar:'العربية',zh:'中文',nl:'Nederlands',pl:'Polski',ro:'Română',uk:'Українська',ru:'Русский',tr:'Türkçe'};
 /* Cada conjunto contém pt, en, fr, es, it, de, ar, zh, nessa ordem. */
 const D={
- footerMotto:['Feito para conversas reais.','Made for real conversations.','Conçu pour de vraies conversations.','Para conversaciones reales.','Pensato per conversazioni reali.','Für echte Gespräche gemacht.','صُنع للمحادثات الحقيقية.','为真实对话而打造。'],
- footerLanguages:['8 idiomas · 56 combinações','8 languages · 56 combinations','8 langues · 56 combinaisons','8 idiomas · 56 combinaciones','8 lingue · 56 combinazioni','8 Sprachen · 56 Kombinationen','٨ لغات · ٥٦ مجموعة','8 种语言 · 56 种组合'],
- soloKicker:['UM APARELHO · SEM SALA · 8 IDIOMAS','ONE DEVICE · NO ROOM · 8 LANGUAGES','UN APPAREIL · SANS SALON · 8 LANGUES','UN DISPOSITIVO · SIN SALA · 8 IDIOMAS','UN DISPOSITIVO · SENZA STANZA · 8 LINGUE','EIN GERÄT · KEIN RAUM · 8 SPRACHEN','جهاز واحد · دون غرفة · ٨ لغات','单设备 · 无房间 · 8 种语言'],
+ voiceOtherLang:['Outro idioma: escolha a língua','Voice language','Langue de la voix','Idioma de voz','Lingua della voce','Sprache der Stimme','لغة الصوت','语音语言'],
+ voiceOther:['Voz instalada neste idioma','Voice installed for this language','Voix installée dans cette langue','Voz instalada para este idioma','Voce installata per questa lingua','Installierte Stimme für diese Sprache','الصوت المثبّت لهذه اللغة','该语言已安装的语音'],
+ voiceOtherTest:['🔊 Testar idioma selecionado','🔊 Test selected language','🔊 Tester la langue sélectionnée','🔊 Probar idioma seleccionado','🔊 Prova la lingua selezionata','🔊 Gewählte Sprache testen','🔊 اختبار اللغة المحددة','🔊 测试所选语言'],
+  footerMotto:['Feito para conversas reais.','Made for real conversations.','Conçu pour de vraies conversations.','Para conversaciones reales.','Pensato per conversazioni reali.','Für echte Gespräche gemacht.','صُنع للمحادثات الحقيقية.','为真实对话而打造。'],
+ footerLanguages:['14 idiomas · 182 combinações','14 languages · 182 combinations','14 langues · 182 combinaisons','14 idiomas · 182 combinaciones','14 lingue · 182 combinazioni','14 Sprachen · 182 Kombinationen','١٤ لغة · ١٨٢ مجموعة','14 种语言 · 182 种组合'],
+ soloKicker:['UM APARELHO · SEM SALA · 14 IDIOMAS','ONE DEVICE · NO ROOM · 14 LANGUAGES','UN APPAREIL · SANS SALON · 14 LANGUES','UN DISPOSITIVO · SIN SALA · 14 IDIOMAS','UN DISPOSITIVO · SENZA STANZA · 14 LINGUE','EIN GERÄT · KEIN RAUM · 14 SPRACHEN','جهاز واحد · دون غرفة · ١٤ لغة','单设备 · 无房间 · 14 种语言'],
  translateServiceGemini:['Gemini Flash-Lite — IA gratuita (requer configuração)','Gemini Flash-Lite — Free AI (setup required)','Gemini Flash-Lite — IA gratuite (configuration requise)','Gemini Flash-Lite — IA gratuita (requiere configuración)','Gemini Flash-Lite — IA gratuita (richiede configurazione)','Gemini Flash-Lite — Gratis-KI (Einrichtung nötig)','Gemini Flash-Lite — ذكاء اصطناعي مجاني (يتطلب إعداداً)','Gemini Flash-Lite — 免费 AI（需配置）'],
  translateServiceMemory:['MyMemory — tradutor tradicional','MyMemory — traditional translation','MyMemory — traduction classique','MyMemory — traducción tradicional','MyMemory — traduzione classica','MyMemory — klassische Übersetzung','MyMemory — ترجمة تقليدية','MyMemory — 传统翻译'],
  chooseAction:['Escolha um teste: ouvir pelo microfone ou traduzir uma frase.','Choose a test: microphone or typed sentence.','Choisissez un test : microphone ou phrase saisie.','Elige una prueba: micrófono o texto.','Scegli un test: microfono o testo.','Wähle einen Test: Mikrofon oder Text.','اختر الاختبار: ميكروفون أو جملة مكتوبة.','选择测试：麦克风或输入句子。'],
@@ -159,7 +162,10 @@ const mapping={
  'label[for="interfaceLanguage"]':'appLanguage',
  'label[for="voicePt"]':'voicePt',
  'label[for="voiceFr"]':'voiceFr',
- 'label[for="voiceRate"]':'speed'
+ 'label[for="voiceRate"]':'speed',
+ 'label[for="voiceOtherLang"]':'voiceOtherLang',
+ 'label[for="voiceOther"]':'voiceOther',
+ '#tryVoiceOther':'voiceOtherTest'
 };
 const nodes=Object.entries(mapping).map(([selector,key])=>({node:document.querySelector(selector),key}));
 const header=document.querySelector('.hero h1');
@@ -178,6 +184,7 @@ const footnote=document.querySelector('footer');
 let locale='pt';
 function t(key){
  const i=codes.indexOf(locale);
+ if(i>=8)return window.DuoEuropeUI?.[locale]?.[key]||D[key]?.[1]||D[key]?.[0]||key;
  return D[key]?.[i]||D[key]?.[0]||key;
 }
 function statusTranslation(phrase){
