@@ -1,4 +1,4 @@
-# DuoTranslate — protótipo 1.4
+# DuoTranslate — protótipo 1.5
 
 **Objetivo:** duas pessoas se comunicarem em português (Brasil) e francês (França), cada uma usando **seu próprio celular e fone Bluetooth comum**. A pessoa fala ao microfone do celular/fone; o outro aparelho reproduz a versão traduzida em voz alta.
 
@@ -13,6 +13,22 @@
 - Leitura em voz alta da tradução recebida com `speechSynthesis` — deve usar o dispositivo de saída padrão do telefone, incluindo Bluetooth quando roteado pelo sistema.
 - Botões para testar o áudio e para digitar frases manualmente se o reconhecimento de voz não funcionar.
 - Ao reproduzir uma tradução, o app tenta pausar temporariamente a captação para evitar que o áudio seja novamente traduzido.
+
+## Versão 1.5 — idiomas e controle de consumo (beta, sem instaladores)
+
+**Backup:** a versão 1.4 anterior às mudanças foi preservada na branch \`stable-v1.4\`.
+
+**Android, iOS e Web:** esta etapa modifica somente o código Web que usamos como base comum. **Não foi criado APK Android ou IPA iOS.** O Android utiliza \`.apk\` (ou \`.aab\` nas lojas) e o iPhone não instala APK: aplicativos iOS usam \`.ipa\`, assinatura e provisionamento. Quando decidirmos empacotar para testes, avaliar Capacitor, ferramentas nativas (Android Studio/Xcode), microfone/voz e permissões. Não publicar nas lojas por enquanto.
+
+**Idiomas de tradução:** \`languages.js\` centraliza português, francês, inglês, espanhol, italiano, alemão, árabe e mandarim simplificado. Na conversa em dupla, cada pessoa escolhe a língua que fala; no teste individual, há campos independentes para o idioma ouvido e o idioma de destino. Diferentes pares são aceitos pela tradução Gemini via Cloudflare e enviados ao MyMemory no modo tradicional. O reconhecimento de voz e a síntese dependem do navegador/sistema; árabe e chinês podem falhar ou usar vozes pouco naturais. Testar em cada aparelho. O seletor avançado de vozes ainda cobre principalmente PT/FR.
+
+**Idioma da interface:** seletor português, francês, inglês e espanhol com tradução inicial dos títulos, botões e textos principais. Alguns avisos/status técnicos continuam em português, para ajuste em versões posteriores.
+
+**Consumo:** o painel mostra estimativa de solicitações Gemini/MyMemory feitas **neste navegador**, tokens reportados pelo Gemini e falhas. Os dados são guardados localmente, não combinam vários aparelhos e não refletem o limite real da conta. Os limites oficiais ficam no Google AI Studio (RPM/TPM/RPD) e na Cloudflare (requisições). Reiniciar o contador local não renova a cota.
+
+**Proteção no servidor:** binding Cloudflare Rate Limiting (\`AI_RATE_LIMITER\`) configura **40 chamadas por 60 segundos por localidade**, com chave compartilhada do protótipo. É aproximado/eventualmente consistente, não faz contagem diária global, e não é uma garantia contra abuso. O código \`DUO_ACCESS_CODE\` continua obrigatório e armazenado no Cloudflare Secret. **Não compartilhar o código de acesso com amigos**, porque não temos contas individuais/autenticação pública. Antes de divulgação pública, implementar cadastro, cotas por usuário e monitoramento servidor seguro. Não vincular cartão/faturamento na chave Free.
+
+**Privacidade:** o histórico existente continua armazenado no dispositivo. Não são gravadas chaves Gemini nem senhas no histórico. Nenhuma gravação de áudio. O reconhecimento pode processar fala em serviços do navegador e a tradução em APIs externas.
 
 ## Versão 1.4 — histórico, exportação e avaliação
 
