@@ -60,7 +60,13 @@ window.DuoEuropeUI={
     "usageReset": "Lokale teller opnieuw instellen",
     "chooseAction": "Test met de microfoon of met een getypte zin.",
     "soloDone": "Vertaling klaar. Je kunt deze opnieuw afspelen.",
-    "notTranslated": "Bron- en doeltaal zijn gelijk. Kies verschillende talen."
+    "notTranslated": "Bron- en doeltaal zijn gelijk. Kies verschillende talen.",
+    "voiceOtherLang": "Andere talen — kies een taal",
+    "voiceOther": "Stem op dit apparaat",
+    "voiceOtherTest": "🔊 Geselecteerde taal testen",
+    "footerMotto": "Voor echte gesprekken.",
+    "footerLanguages": "14 talen · 182 combinaties",
+    "soloKicker": "ÉÉN APPARAAT · GEEN KAMER · 14 TALEN"
   },
   "pl": {
     "appLanguage": "Język aplikacji",
@@ -122,7 +128,13 @@ window.DuoEuropeUI={
     "usageReset": "Wyzeruj lokalny licznik",
     "chooseAction": "Wybierz test mikrofonu lub wpisz zdanie.",
     "soloDone": "Tłumaczenie gotowe. Możesz je odtworzyć ponownie.",
-    "notTranslated": "Język źródłowy i docelowy są takie same. Wybierz różne języki."
+    "notTranslated": "Język źródłowy i docelowy są takie same. Wybierz różne języki.",
+    "voiceOtherLang": "Inne języki — wybierz język",
+    "voiceOther": "Głos na tym urządzeniu",
+    "voiceOtherTest": "🔊 Przetestuj wybrany język",
+    "footerMotto": "Do prawdziwych rozmów.",
+    "footerLanguages": "14 języków · 182 kombinacje",
+    "soloKicker": "JEDNO URZĄDZENIE · BEZ POKOJU · 14 JĘZYKÓW"
   },
   "ro": {
     "appLanguage": "Limba aplicației",
@@ -184,7 +196,13 @@ window.DuoEuropeUI={
     "usageReset": "Resetează contorul local",
     "chooseAction": "Alege un test cu microfonul sau o propoziție scrisă.",
     "soloDone": "Traducerea este gata. O poți reda din nou.",
-    "notTranslated": "Limba sursă și cea țintă sunt identice. Alege limbi diferite."
+    "notTranslated": "Limba sursă și cea țintă sunt identice. Alege limbi diferite.",
+    "voiceOtherLang": "Alte limbi — alege o limbă",
+    "voiceOther": "Voce disponibilă pe dispozitiv",
+    "voiceOtherTest": "🔊 Testează limba aleasă",
+    "footerMotto": "Creat pentru conversații reale.",
+    "footerLanguages": "14 limbi · 182 de combinații",
+    "soloKicker": "UN DISPOZITIV · FĂRĂ CAMERĂ · 14 LIMBI"
   },
   "uk": {
     "appLanguage": "Мова застосунку",
@@ -246,7 +264,13 @@ window.DuoEuropeUI={
     "usageReset": "Скинути локальний лічильник",
     "chooseAction": "Виберіть тест мікрофона або введіть речення.",
     "soloDone": "Переклад готовий. Його можна відтворити ще раз.",
-    "notTranslated": "Мови оригіналу й перекладу збігаються. Виберіть різні мови."
+    "notTranslated": "Мови оригіналу й перекладу збігаються. Виберіть різні мови.",
+    "voiceOtherLang": "Інші мови — виберіть мову",
+    "voiceOther": "Голос на цьому пристрої",
+    "voiceOtherTest": "🔊 Перевірити вибрану мову",
+    "footerMotto": "Створено для справжніх розмов.",
+    "footerLanguages": "14 мов · 182 комбінації",
+    "soloKicker": "ОДИН ПРИСТРІЙ · БЕЗ КІМНАТИ · 14 МОВ"
   },
   "ru": {
     "appLanguage": "Язык приложения",
@@ -308,7 +332,13 @@ window.DuoEuropeUI={
     "usageReset": "Сбросить локальный счётчик",
     "chooseAction": "Выберите тест микрофона или введите фразу.",
     "soloDone": "Перевод готов. Можно прослушать ещё раз.",
-    "notTranslated": "Исходный и целевой языки одинаковы. Выберите разные языки."
+    "notTranslated": "Исходный и целевой языки одинаковы. Выберите разные языки.",
+    "voiceOtherLang": "Другие языки — выберите язык",
+    "voiceOther": "Голос на этом устройстве",
+    "voiceOtherTest": "🔊 Проверить выбранный язык",
+    "footerMotto": "Для настоящих разговоров.",
+    "footerLanguages": "14 языков · 182 комбинации",
+    "soloKicker": "ОДНО УСТРОЙСТВО · БЕЗ КОМНАТЫ · 14 ЯЗЫКОВ"
   },
   "tr": {
     "appLanguage": "Uygulama dili",
@@ -370,6 +400,12 @@ window.DuoEuropeUI={
     "usageReset": "Yerel sayacı sıfırla",
     "chooseAction": "Mikrofon veya yazılı cümle ile test yapın.",
     "soloDone": "Çeviri tamamlandı. Tekrar oynatabilirsiniz.",
-    "notTranslated": "Kaynak ve hedef dil aynı. Farklı diller seçin."
+    "notTranslated": "Kaynak ve hedef dil aynı. Farklı diller seçin.",
+    "voiceOtherLang": "Diğer diller — dil seçin",
+    "voiceOther": "Bu cihazdaki ses",
+    "voiceOtherTest": "🔊 Seçilen dili test et",
+    "footerMotto": "Gerçek konuşmalar için tasarlandı.",
+    "footerLanguages": "14 dil · 182 kombinasyon",
+    "soloKicker": "TEK CİHAZ · ODA YOK · 14 DİL"
   }
 };
