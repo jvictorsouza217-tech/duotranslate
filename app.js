@@ -11,10 +11,7 @@ const el = {
  form: $('textForm'), input: $('textInput'), send: $('sendBtn'),
  messages: $('messages'), clear: $('clearBtn'), toast: $('toast')
 };
-const LANG = {
- 'pt-BR': {name:'Português', api:'pt', sample:'Áudio funcionando. Vamos conversar!'},
- 'fr-FR': {name:'Français', api:'fr', sample:'Le son fonctionne. On peut parler !'}
-};
+const LANG = window.DuoLanguages || {};
 const Recognition = window.SpeechRecognition || window.webkitSpeechRecognition;
 const alphabet = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
 const state = {
@@ -196,7 +193,9 @@ async function translate(text,source,target){
   if(/MYMEMORY WARNING|USAGE LIMIT|DAILY LIMIT/i.test(t))throw Error('Limite gratuito atingido.');
   output.push(new DOMParser().parseFromString(t,'text/html').body.textContent || t);
  }
- return output.join(' ').trim();
+ const translated=output.join(' ').trim();
+ window.DuoUsage?.record({engine:'mymemory',ok:true});
+ return translated;
 }
 function phrase(text){
  const original=String(text||'').trim().slice(0,400);
