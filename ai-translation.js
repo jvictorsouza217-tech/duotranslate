@@ -69,6 +69,34 @@ async function translate(text,source,target){
  if(!result)throw Error('A IA não devolveu uma tradução.');
  return result.slice(0,900);
 }
+
+async function analyze(original,translation,source,target){
+ const base=getEndpoint();
+ const access=ui.pin.value.trim();
+ if(!access)throw Error('Digite o código de acesso Cloudflare na seção Gemini, acima.');
+ const controller=new AbortController();
+ const timeout=setTimeout(()=>controller.abort(),20000);
+ let response;
+ try{
+  response=await fetch(base.replace(/\/translate$/,'/analyze'),{
+   method:'POST',
+   mode:'cors',
+   headers:{'Content-Type':'application/json','X-Duo-Pin':access},
+   body:JSON.stringify({original:String(original).slice(0,650),translation:String(translation).slice(0,1000),source,target}),
+   signal:controller.signal,
+   cache:'no-store'
+  });
+ }catch(e){
+  if(e.name==='AbortError')throw Error('A análise demorou demais. Tente mais tarde.');
+  throw Error('Falha de rede. Verifique o endereço do Worker e a internet.');
+ }finally{clearTimeout(timeout);}
+ let data;
+ try{data=await response.json();}catch(e){throw Error('Resposta inválida do servidor de análise.');}
+ if(!response.ok)throw Error(String(data?.error||'Análise indisponível (HTTP '+response.status+').'));
+ const answer=String(data?.analysis||'').trim();
+ if(!answer)throw Error('A IA não retornou uma avaliação.');
+ return answer;
+}
 ui.provider.addEventListener('change',save);
 ui.url.addEventListener('change',save);
 ui.pin.addEventListener('change',save);
@@ -87,7 +115,7 @@ ui.test.addEventListener('click',async()=>{
 });
 window.DuoAI={
  enabled:()=>ui.provider.value==='gemini',
- translate,
+ translate,analyze,
  label:()=>ui.provider.value==='gemini'?'Gemini (IA)':'MyMemory'
 };
 update();
