@@ -23,7 +23,7 @@ const datefmt=timestamp=>{
  try{return new Intl.DateTimeFormat('pt-BR',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'}).format(new Date(timestamp));}
  catch(e){return 'Data desconhecida';}
 };
-const lang=x=>x==='fr-FR'?'Francês':'Português';
+const lang=x=>window.DuoLanguages?.[x]?.name||x;
 const type=x=>x==='duo'?'Conversa em dupla':'Teste individual';
 function info(message,error=false){
  ui.status.textContent=message;ui.status.classList.toggle('history-error',error);
@@ -50,7 +50,7 @@ function render(){
   const card=document.createElement('article');card.className='history-entry';
   const head=document.createElement('div');head.className='history-entry-head';
   item(head,datefmt(r.at)+' · '+type(r.mode),'span');
-  item(head,(r.source==='fr-FR'?'FR → PT':'PT → FR')+' · '+(r.provider||'Tradutor'), 'span','history-tag');
+  item(head,(r.source.split('-')[0].toUpperCase()+' → '+r.target.split('-')[0].toUpperCase())+' · '+(r.provider||'Tradutor'), 'span','history-tag');
   card.append(head);
   item(card,'ORIGINAL','small','history-label');
   item(card,r.original,'p','history-original');
@@ -95,8 +95,8 @@ function add(entry){
   at:new Date().toISOString(),
   mode:entry.mode==='duo'?'duo':'solo',
   direction:entry.direction==='received'?'received':'sent',
-  source:entry.source==='fr-FR'?'fr-FR':'pt-BR',
-  target:entry.target==='fr-FR'?'fr-FR':'pt-BR',
+  source:window.DuoLanguages?.[entry.source]?entry.source:'pt-BR',
+  target:window.DuoLanguages?.[entry.target]?entry.target:'fr-FR',
   original,translation,
   provider:String(entry.provider||'MyMemory').slice(0,45),
   translationMs:Number.isFinite(Number(entry.translationMs))?Math.max(0,Number(entry.translationMs)):null
@@ -134,7 +134,7 @@ function exportJson(){
 async function memoryTranslate(text,source,target){
  const url=new URL('https://api.mymemory.translated.net/get');
  url.searchParams.set('q',text.slice(0,350));
- url.searchParams.set('langpair',(source==='fr-FR'?'fr':'pt')+'|'+(target==='fr-FR'?'fr':'pt'));
+ url.searchParams.set('langpair',(window.DuoLanguages?.[source]?.api||'pt')+'|'+(window.DuoLanguages?.[target]?.api||'fr'));
  const ctrl=new AbortController(),timer=setTimeout(()=>ctrl.abort(),15000);
  let resp;
  try{resp=await fetch(url,{signal:ctrl.signal,cache:'no-store'});}finally{clearTimeout(timer);}
