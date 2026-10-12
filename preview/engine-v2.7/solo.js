@@ -73,6 +73,12 @@ async function translate(text,from,to){
  return out;
 }
 function speak(text,language,complete){
+ if(window.DuoPremiumVoice?.enabled(language)){
+  window.DuoPremiumVoice.speak(text,language).then(complete).catch(error=>{status("ElevenLabs indisponível: "+String(error?.message||error)+". Usando voz do aparelho.");speakLocal(text,language,complete);});return;
+ }
+ speakLocal(text,language,complete);
+}
+function speakLocal(text,language,complete){
  if(!window.speechSynthesis || !window.SpeechSynthesisUtterance){
   status('Tradução pronta, mas este navegador não oferece leitura em voz alta.');
   complete();return;
