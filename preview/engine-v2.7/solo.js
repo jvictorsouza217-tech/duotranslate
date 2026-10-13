@@ -167,7 +167,7 @@ async function process(input){
   s.last={text:out,lang:target()};
   addResult(original,out,false,translationMs);
   const direction=$('soloDirection');if(direction)direction.textContent=languages[ui.source.value].flag+' '+languages[ui.source.value].name+' → '+languages[target()].flag+' '+languages[target()].name;
-  window.DuoHistory?.add({mode:'solo',direction:'sent',source:ui.source.value,target:target(),original,translation:out,translationMs,provider:window.DuoReliable?.lastProvider()||(window.DuoAI?.label()||'MyMemory')});
+  window.DuoHistory?.add({mode:document.body.dataset.duoContext==='listening'?'listening':'solo',direction:'sent',source:ui.source.value,target:target(),original,translation:out,translationMs,provider:window.DuoReliable?.lastProvider()||(window.DuoAI?.label()||'MyMemory')});
   status('Tradução concluída. Reproduzindo em '+languages[target()].name+'...');
   render();
   speak(out,target(),()=>{
