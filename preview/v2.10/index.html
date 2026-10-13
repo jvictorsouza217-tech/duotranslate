@@ -931,7 +931,14 @@ function recordContinuousHistory(original,translation,error=''){
 }
 let continuousProvider='';
 const continuous=window.DuoContinuous.create({
- status:message=>{$('continuousStatus').textContent=message;},caption:text=>{$('continuousCaption').textContent=text;},
+ status:message=>{
+  $('continuousStatus').textContent=message;
+  if(/ElevenLabs encerrou|A conexão de transcrição caiu|Transcrição interrompida|Falha na transcrição contínua|Conexão lenta: captação/i.test(message)){
+   const oldProvider=continuousProvider;continuousProvider='ElevenLabs (reconhecimento)';
+   recordContinuousHistory('[interrupção da sessão contínua]','',message);
+   continuousProvider=oldProvider;
+  }
+ },caption:text=>{$('continuousCaption').textContent=text;},
  result:(original,translated)=>{const row=document.createElement('div');row.className='int-profile-row';const p=document.createElement('p');p.textContent=original;const out=document.createElement('strong');out.textContent=translated;row.append(p,out);$('continuousResults').prepend(row);while($('continuousResults').children.length>12)$('continuousResults').lastElementChild.remove();recordContinuousHistory(original,translated);},
  failure:(original,reason)=>recordContinuousHistory(original,'',reason),
  translate:async(text,source,target)=>{
