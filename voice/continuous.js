@@ -29,9 +29,9 @@ function create({status,caption,result,translate,onState}){
      r.flushTimer=setInterval(()=>flush(r),2500);
      // Commit a long uninterrupted utterance periodically instead of waiting forever for silence.
      r.commitTimer=setInterval(()=>{if(run===r)r.commitPending=true;},5000);
-    }else if(data.message_type==='partial_transcript'){caption(data.text||'');}
+    }else if(data.message_type==='partial_transcript'){caption(data.text||'');if(data.text?.trim())status('Reconhecendo fala… aguardando o fim do trecho para traduzir.');}
     else if(data.message_type==='committed_transcript'&&data.text?.trim()){
-     caption(data.text);r.pending.push(data.text.trim());
+     caption(data.text);r.pending.push(data.text.trim());status('Fala reconhecida. Preparando a tradução…');
      if(r.pending.join(' ').length>1800)stop('A transcrição acumulou atraso. Pare a fonte de áudio e inicie novamente.');
     }else if(data.error||/error|quota|rate_limited|overflow|exhausted/.test(data.message_type||'')){stop('Transcrição interrompida: '+String(data.error||data.message_type).slice(0,180));}
    };
@@ -44,15 +44,18 @@ function create({status,caption,result,translate,onState}){
   if(run!==r||r.busy||!r.queue.length)return;r.busy=true;
   const original=r.queue.shift();
   try{
+   status('Traduzindo com Gemini…');
    const translated=await translate(original,r.sourceLanguage,r.targetLanguage);if(run!==r)return;
-   result(original,translated);
+   result(original,translated);status('Tradução pronta. Preparando áudio ElevenLabs…');
    for(const phrase of split(translated,800)){
     if(run!==r)return;
-    const response=await window.DuoAccess.fetch(window.DuoAccess.voiceUrl+'/stream-tts',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({text:phrase,lang:r.targetLanguage,voiceId:r.voiceId}),signal:AbortSignal.any([r.cancel.signal,AbortSignal.timeout(18000)])});
+    const response=await window.DuoAccess.fetch(window.DuoAccess.voiceUrl+'/stream-tts',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({text:phrase,lang:r.targetLanguage,voiceId:r.voiceId}),signal:typeof AbortSignal.any==='function'&&typeof AbortSignal.timeout==='function'?AbortSignal.any([r.cancel.signal,AbortSignal.timeout(18000)]):r.cancel.signal});
     if(!response.ok){const error=await response.json().catch(()=>({}));throw new Error(error.error||'Falha ao reproduzir a tradução.');}
     const bytes=await response.arrayBuffer();if(run!==r)return;const buffer=await r.ctx.decodeAudioData(bytes);if(run!==r)return;
+    await r.ctx.resume();if(run!==r)return;status('Reproduzindo a tradução. A captação continua ativa…');
     await new Promise(resolve=>{const audio=r.ctx.createBufferSource();audio.buffer=buffer;audio.connect(r.ctx.destination);r.playing=audio;audio.onended=resolve;audio.start();});
    }
+   if(run===r)status('Ouvindo continuamente. Pronto para o próximo trecho.');
   }catch(e){if(run===r)stop('Tradução interrompida: '+e.message);}
   finally{r.busy=false;if(run===r)pump(r);}
  }

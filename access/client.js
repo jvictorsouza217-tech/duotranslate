@@ -186,6 +186,7 @@ const access={fetch:signedFetch,invite,renderStatus,
  get active(){return !!session;},get role(){return session?.user?.role||'';},
  get remembered(){return !!get(localStorage,KEY)||Object.values(read(localStorage,TRUSTED,{})).some(realPin);},
  get voiceUrl(){return VOICE;},
+ get aiUrl(){return API;},
  remember(){put(localStorage,KEEP,'1');if(session)put(localStorage,KEY,JSON.stringify(session));},
  forget(){put(localStorage,KEEP,'0');remove(localStorage,KEY);remove(localStorage,TRUSTED);},
  admin:{login:loginAdmin,users:()=>call('/access/users'),revoke:userId=>call('/access/revoke',{userId})}
