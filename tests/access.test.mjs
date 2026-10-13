@@ -537,12 +537,40 @@ test('continuous listening keeps capturing during playback and releases the micr
   AudioWorkletNode:class {port={onmessage:null};connect(){}disconnect(){}},setInterval:(fn,ms)=>{timers.set(ms,fn);return ms;},clearInterval:ms=>timers.delete(ms),setTimeout,clearTimeout,
   AbortController,AbortSignal,btoa,URL,Uint8Array,queueMicrotask});
  vm.runInContext(await readFile(new URL('../voice/continuous.js',import.meta.url),'utf8'),context);
- const api=window.DuoContinuous.create({status(){},caption(){},result(){},onState(){},translate:async()=>{translated++;return 'Bonjour';}});
+ const stages=[];const api=window.DuoContinuous.create({status:message=>stages.push(message),caption(){},result(){},onState(){},translate:async()=>{translated++;return 'Bonjour';}});
  await api.start('pt-BR','fr-FR',selectedVoice);
  socket.onmessage({data:JSON.stringify({message_type:'session_started'})});
  socket.onmessage({data:JSON.stringify({message_type:'committed_transcript',text:'Olá'})});
  timers.get(2500)();await new Promise(resolve=>setImmediate(resolve));
  assert.equal(stopped,0);assert.equal(api.active,true);
- assert.equal(translated,1);assert.equal(spoken,1);
+ assert.equal(translated,1);assert.equal(spoken,1);assert.ok(stages.some(s=>s.includes('Traduzindo com Gemini')));assert.ok(stages.some(s=>s.includes('Reproduzindo a tradução')));
  api.stop();assert.equal(stopped,1);assert.equal(closed,1);
+});
+
+test('ElevenLabs voice selection synthesizes a language-specific sample instead of an English voice preview',async()=>{
+ const source=await readFile(new URL('../voice/picker.js',import.meta.url),'utf8');
+ const created=[];function element(tag){return {tag,style:{},children:[],value:'',textContent:'',replaceChildren(...items){this.children=items},append(...items){this.children.push(...items)},after(node){this.sibling=node},setAttribute(){},dispatchEvent(){}};}
+ const window={addEventListener(){},DuoEleven:{choices:()=>({voices:[{id:selectedVoice,name:'George',preview:'https://english.example/voice.mp3'}],selected:selectedVoice}),selectVoice(lang,id){assert.equal(lang,'fr-FR');assert.equal(id,selectedVoice);return true;}}};
+ const document={createElement:tag=>{const el=element(tag);created.push(el);return el;}};
+ let generated=0,recordedPreview=0;
+ const context=vm.createContext({window,document,Event:class{},Audio:class{constructor(){recordedPreview++;}}});
+ vm.runInContext(source,context);
+ const select=element('select'),status=element('p');
+ window.DuoVoicePicker.mount(select,'fr-FR',status,()=>{generated++;});
+ const button=created.find(el=>el.tag==='button'&&el.textContent.includes('George'));
+ assert.ok(button);button.onclick();
+ assert.equal(generated,1);assert.equal(recordedPreview,0);assert.equal(select.value,selectedVoice);
+});
+test('continuous Gemini translation bypasses the hidden iframe and uses the authorized service',async()=>{
+ const html=await readFile(new URL('../preview/v2.10/index.html',import.meta.url),'utf8');
+ const mark='translate:async(text,source,target)=>{',start=html.indexOf(mark,html.indexOf('const continuous=window.DuoContinuous.create'));
+ const end=html.indexOf('\n },\n onState:',start);
+ assert.ok(start>0&&end>start);
+ const body=html.slice(start+mark.length,end),calls=[];
+ const window={DuoAccess:{active:true,aiUrl:'https://test-gemini.example',fetch:async(url,opts)=>{calls.push({url,payload:JSON.parse(opts.body)});return {ok:true,json:async()=>({translation:'Bonjour !'})};}}};
+ const context=vm.createContext({window,AbortSignal});
+ const fn=vm.runInContext('(async(text,source,target)=>{'+body+'})',context);
+ assert.equal(await fn('Olá!','pt-BR','fr-FR'),'Bonjour !');
+ assert.deepEqual(calls,[{url:'https://test-gemini.example/translate',payload:{text:'Olá!',source:'pt-BR',target:'fr-FR'}}]);
+ assert.ok(html.includes("if(intState.view==='continuous')$('intContinuousPanel').before($('quickVoicePanel'))"));
 });
