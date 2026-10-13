@@ -541,9 +541,10 @@ test('continuous listening keeps capturing during playback and releases the micr
  await api.start('pt-BR','fr-FR',selectedVoice);
  socket.onmessage({data:JSON.stringify({message_type:'session_started'})});
  socket.onmessage({data:JSON.stringify({message_type:'committed_transcript',text:'Olá'})});
- timers.get(2500)();await new Promise(resolve=>setImmediate(resolve));
+ assert.equal(timers.has(2500),false);assert.equal(timers.has(5000),false);
+  await new Promise(resolve=>setImmediate(resolve));
  assert.equal(stopped,0);assert.equal(api.active,true);
- assert.equal(translated,1);assert.equal(spoken,1);assert.ok(stages.some(s=>s.includes('Traduzindo com Gemini')));assert.ok(stages.some(s=>s.includes('Reproduzindo a tradução')));
+ assert.equal(translated,1);assert.equal(spoken,1);assert.ok(stages.some(s=>s.includes('Traduzindo trecho')));assert.ok(stages.some(s=>s.includes('Reproduzindo a tradução')));
  api.stop();assert.equal(stopped,1);assert.equal(closed,1);
 });
 
@@ -612,4 +613,37 @@ test('existing history supports all modes and continuous failures with no audio 
  assert.ok(html.includes('recordContinuousHistory(original,translated)'));
  assert.ok(html.includes("failure:(original,reason)=>recordContinuousHistory(original,'',reason)"));
  assert.ok(!html.includes('localStorage.setItem(key,JSON.stringify(r.stream)'));
+});
+
+test('realtime Scribe capture relies on VAD and carries provider closure details',async()=>{
+ const code=await readFile(new URL('../cloudflare/realtime-voice.js',import.meta.url),'utf8');
+ const client=await readFile(new URL('../voice/continuous.js',import.meta.url),'utf8');
+ assert.ok(code.includes("keepalive_interval_ms:'1000'"));
+ assert.ok(code.includes("vad_silence_threshold_secs:'1.3'"));
+ assert.ok(code.includes("event.code"));
+ assert.ok(client.includes('flush(r);'));
+ assert.ok(!client.includes('r.commitTimer=setInterval'));
+ assert.ok(!client.includes('r.flushTimer=setInterval'));
+ assert.ok(!client.includes('commit:r.commitPending===true'));
+});
+
+test('common spoken greeting and statement do not produce false MyMemory translations',async()=>{
+ const code=await readFile(new URL('../preview/engine-v2.7/phrasebook.js',import.meta.url),'utf8');
+ const window={},localStorage=browserStore();
+ vm.runInContext(code,vm.createContext({window,localStorage}));
+ assert.equal(window.DuoPhrasebook.translate('ola','pt-BR','fr-FR'),'Bonjour');
+ assert.equal(window.DuoPhrasebook.translate('Tudo bem.','pt-BR','fr-FR'),'Tout va bien.');
+ assert.equal(window.DuoPhrasebook.translate('Tudo bem?','pt-BR','fr-FR'),'Ça va ?');
+ assert.equal(window.DuoPhrasebook.translate('Oi, tudo bem, pessoal?','pt-BR','fr-FR'),null);
+});
+
+test('2.10 selected ElevenLabs voices are not silently replaced with native voices',async()=>{
+ const premium=await readFile(new URL('../preview/engine-v2.7/premium-voice.js',import.meta.url),'utf8');
+ const solo=await readFile(new URL('../preview/engine-v2.7/solo.js',import.meta.url),'utf8');
+ const pair=await readFile(new URL('../preview/engine-v2.7/app.js',import.meta.url),'utf8');
+ assert.ok(premium.includes("const path=individual?'/stream-tts':'/tts'"));
+ assert.ok(premium.includes('window.DuoAccess?.active===true'));
+ assert.ok(solo.includes('A voz do aparelho não será usada automaticamente.'));
+ assert.ok(pair.includes('Nenhuma outra voz foi utilizada.'));
+ assert.ok(solo.includes("document.body.dataset.duoContext&&window.DuoPremiumVoice?.configuredFor?.(language)"));
 });

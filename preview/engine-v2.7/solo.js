@@ -77,7 +77,14 @@ async function translate(text,from,to){
 }
 function speak(text,language,complete){
  if(window.DuoPremiumVoice?.enabled(language)){
-  window.DuoPremiumVoice.speak(text,language).then(complete).catch(error=>{status("ElevenLabs indisponível: "+String(error?.message||error)+". Usando voz do aparelho.");speakLocal(text,language,complete);});return;
+  window.DuoPremiumVoice.speak(text,language).then(complete).catch(error=>{
+   if(document.body.dataset.duoContext){
+    status('ElevenLabs não reproduziu: '+String(error?.message||error)+'. A voz do aparelho não será usada automaticamente.');complete();
+   }else{status('ElevenLabs indisponível: '+String(error?.message||error)+'. Usando voz do aparelho.');speakLocal(text,language,complete);}
+  });return;
+ }
+ if(document.body.dataset.duoContext&&window.DuoPremiumVoice?.configuredFor?.(language)){
+  status('ElevenLabs selecionada, mas sem acesso ativo. Verifique a sessão; outra voz não foi utilizada.');complete();return;
  }
  speakLocal(text,language,complete);
 }

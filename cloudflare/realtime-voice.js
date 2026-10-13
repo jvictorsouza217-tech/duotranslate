@@ -15,12 +15,12 @@ export async function realtimeVoice(req,env){
  const lang=new URL(req.url).searchParams.get('language');if(!LANGS.has(lang))return fail('Idioma inválido.',400);
  if(!(await env.REALTIME_LIMITER.limit({key:'duo-realtime-shared'})).success)return fail('Aguarde um minuto antes de iniciar outra sessão.',429);
  const url=new URL('https://api.elevenlabs.io/v1/speech-to-text/realtime');
- for(const [key,value] of Object.entries({model_id:'scribe_v2_realtime',audio_format:'pcm_16000',language_code:lang,commit_strategy:'vad',vad_silence_threshold_secs:'0.7'}))url.searchParams.set(key,value);
+ for(const [key,value] of Object.entries({model_id:'scribe_v2_realtime',audio_format:'pcm_16000',language_code:lang,commit_strategy:'vad',vad_silence_threshold_secs:'1.3',keepalive_interval_ms:'1000'}))url.searchParams.set(key,value);
  let response;try{response=await fetch(url,{headers:{Upgrade:'websocket','xi-api-key':env.ELEVENLABS_API_KEY},signal:AbortSignal.timeout(12000)});}catch{return fail('Falha ao iniciar a transcrição.',502);}
  const upstream=response.webSocket;if(!upstream)return fail('ElevenLabs não liberou a transcrição. Confira créditos e permissão de Speech to Text.',502);
  const pair=new WebSocketPair(),client=pair[0],server=pair[1];server.accept();upstream.accept();
  let closed=false,bytes=0,started=Date.now(),checking=false;
- const shutdown=(reason='Sessão encerrada')=>{if(closed)return;closed=true;clearTimeout(expiry);clearInterval(check);try{server.close(1000,reason);}catch{}try{upstream.close(1000,reason);}catch{}};
+ const shutdown=(reason='Sessão encerrada')=>{if(closed)return;closed=true;clearTimeout(expiry);clearInterval(check);const message=String(reason||'Sessão encerrada').slice(0,95);try{server.close(1000,message);}catch{}try{upstream.close(1000,message);}catch{}};
  const expiry=setTimeout(()=>shutdown('Limite de 20 minutos. Inicie outra sessão.'),20*60*1000);
  const check=setInterval(async()=>{if(checking||closed)return;checking=true;try{const value=await individualAccess(authRequest,env,true);if(!value?.user)shutdown('Acesso expirado ou revogado.');}catch{shutdown('Não foi possível validar o acesso.');}finally{checking=false;}},30000);
  server.addEventListener('message',event=>{
@@ -33,6 +33,11 @@ export async function realtimeVoice(req,env){
   try{upstream.send(JSON.stringify({message_type:'input_audio_chunk',audio_base_64:data.audio_base_64,sample_rate:16000,commit:data.commit===true}));}catch{shutdown();}
  });
  upstream.addEventListener('message',event=>{if(closed)return;try{if(typeof event.data==='string'&&event.data.length<=64000)server.send(event.data);else shutdown('Resposta inválida.');}catch{shutdown();}});
- for(const socket of [server,upstream]){socket.addEventListener('close',()=>shutdown());socket.addEventListener('error',()=>shutdown('Falha na conexão de áudio.'));}
+ server.addEventListener('close',()=>shutdown('Conexão encerrada no dispositivo.'));
+ upstream.addEventListener('close',event=>{
+  const code=Number(event.code)||0,why=String(event.reason||'').trim().slice(0,60);
+  shutdown('ElevenLabs encerrou a conexão (código '+code+')'+(why?': '+why:''));
+ });
+ for(const socket of [server,upstream])socket.addEventListener('error',()=>shutdown('Falha na conexão de áudio.'));
  return new Response(null,{status:101,webSocket:client,headers:{'Sec-WebSocket-Protocol':'duo-v1'}});
 }
