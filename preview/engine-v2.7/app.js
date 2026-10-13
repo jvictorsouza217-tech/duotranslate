@@ -278,7 +278,14 @@ function startRecognition(){
 }
 function speak(text,lang,done){
  if(window.DuoPremiumVoice?.enabled(lang)){
-  window.DuoPremiumVoice.speak(text,lang).then(done).catch(error=>{notify("ElevenLabs indisponível: "+String(error?.message||error)+". Usando voz do aparelho.",true);speakLocal(text,lang,done);});return;
+  window.DuoPremiumVoice.speak(text,lang).then(done).catch(error=>{
+   if(document.body.dataset.duoContext){
+    notify('ElevenLabs não reproduziu: '+String(error?.message||error)+'. Nenhuma outra voz foi utilizada.',true);done();
+   }else{notify('ElevenLabs indisponível: '+String(error?.message||error)+'. Usando voz do aparelho.',true);speakLocal(text,lang,done);}
+  });return;
+ }
+ if(document.body.dataset.duoContext&&window.DuoPremiumVoice?.configuredFor?.(lang)){
+  notify('ElevenLabs selecionada, mas sem acesso ativo. Nenhuma outra voz foi usada.',true);done();return;
  }
  speakLocal(text,lang,done);
 }
