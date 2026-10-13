@@ -24,7 +24,7 @@ const datefmt=timestamp=>{
  catch(e){return 'Data desconhecida';}
 };
 const lang=x=>window.DuoLanguages?.[x]?.name||x;
-const type=x=>x==='duo'?'Conversa em dupla':'Teste individual';
+const type=x=>({duo:'Conversa em dupla',solo:'Teste individual',listening:'Escutar e traduzir',continuous:'Tradução contínua'}[x]||'Tradução');
 function info(message,error=false){
  ui.status.textContent=message;ui.status.classList.toggle('history-error',error);
 }
@@ -56,6 +56,7 @@ function render(){
   item(card,r.original,'p','history-original');
   item(card,'TRADUÇÃO','small','history-label');
   item(card,r.translation,'p','history-translation');
+   if(r.error)item(card,'Falha: '+r.error,'small','history-extra');
   const ms=Number(r.translationMs);
   item(card,(Number.isFinite(ms)&&ms>=0?'Tradutor: '+(ms/1000).toFixed(2)+' s · ':'')+'Somente tempo de processamento da tradução','small','history-metric');
   if(r.comparison){
@@ -93,12 +94,13 @@ function add(entry){
  const record={
   id:(window.crypto?.randomUUID?.()||Date.now().toString(36)+'-'+Math.random().toString(36).slice(2)),
   at:new Date().toISOString(),
-  mode:entry.mode==='duo'?'duo':'solo',
+  mode:['duo','solo','listening','continuous'].includes(entry.mode)?entry.mode:'solo',
   direction:entry.direction==='received'?'received':'sent',
   source:window.DuoLanguages?.[entry.source]?entry.source:'pt-BR',
   target:window.DuoLanguages?.[entry.target]?entry.target:'fr-FR',
   original,translation,
   provider:String(entry.provider||'MyMemory').slice(0,45),
+   error:String(entry.error||'').slice(0,220),
   translationMs:Number.isFinite(Number(entry.translationMs))?Math.max(0,Number(entry.translationMs)):null
  };
  records.unshift(record);
@@ -116,12 +118,12 @@ function download(content,type,name){
 function quote(value){return '"'+String(value??'').replaceAll('"','""')+'"';}
 function exportCsv(){
  if(!records.length){info('Ainda não há registros para exportar.',true);return;}
- const cols=['at','mode','direction','source','target','original','translation','provider','translationMs','gemini','geminiMs','mymemory','mymemoryMs','qualityAnalysis'];
+ const cols=['at','mode','direction','source','target','original','translation','provider','translationMs','gemini','geminiMs','mymemory','mymemoryMs','qualityAnalysis','error'];
  const values=records.map(r=>[
  r.at,r.mode,r.direction,r.source,r.target,r.original,r.translation,r.provider,r.translationMs,
  r.comparison?.gemini?.text||'',r.comparison?.gemini?.ms??'',
  r.comparison?.mymemory?.text||'',r.comparison?.mymemory?.ms??'',
- r.analysis?.text||''
+ r.analysis?.text||'',r.error||''
  ]);
  download('\uFEFF'+[cols.map(quote).join(','),...values.map(row=>row.map(quote).join(','))].join('\r\n'),'text/csv;charset=utf-8',safeName()+'.csv');
  info('CSV criado com '+records.length+' registros. Ele contém suas frases completas: compartilhe apenas se desejar.');
@@ -199,7 +201,12 @@ ui.list.addEventListener('click',e=>{
  }else if(b.dataset.action==='compare')compare(r);
  else if(b.dataset.action==='analyze')analyze(r);
 });
-window.DuoHistory={add,count:()=>records.length};
+function refresh(){
+ try{const latest=JSON.parse(localStorage.getItem(DATA_KEY)||'[]');if(Array.isArray(latest))records=latest.filter(x=>x&&typeof x.original==='string'&&typeof x.translation==='string').slice(0,MAX);}catch{}
+ render();
+}
+window.addEventListener('storage',event=>{if(event.key===DATA_KEY)refresh();});
+window.DuoHistory={add,refresh,count:()=>records.length};
 render();
 if(!storageOk)info('O navegador bloqueou o armazenamento local. Seus testes podem não permanecer após fechar a página.',true);
 else info('Os registros ficam somente neste navegador e não são sincronizados pelo aplicativo. Evite salvar conversas sensíveis.');

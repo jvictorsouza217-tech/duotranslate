@@ -561,16 +561,55 @@ test('ElevenLabs voice selection synthesizes a language-specific sample instead 
  assert.ok(button);button.onclick();
  assert.equal(generated,1);assert.equal(recordedPreview,0);assert.equal(select.value,selectedVoice);
 });
-test('continuous Gemini translation bypasses the hidden iframe and uses the authorized service',async()=>{
+test('continuous translation uses shared provider fallback without depending on the hidden iframe',async()=>{
  const html=await readFile(new URL('../preview/v2.10/index.html',import.meta.url),'utf8');
  const mark='translate:async(text,source,target)=>{',start=html.indexOf(mark,html.indexOf('const continuous=window.DuoContinuous.create'));
  const end=html.indexOf('\n },\n onState:',start);
  assert.ok(start>0&&end>start);
  const body=html.slice(start+mark.length,end),calls=[];
- const window={DuoAccess:{active:true,aiUrl:'https://test-gemini.example',fetch:async(url,opts)=>{calls.push({url,payload:JSON.parse(opts.body)});return {ok:true,json:async()=>({translation:'Bonjour !'})};}}};
- const context=vm.createContext({window,AbortSignal});
+ const window={DuoReliable:{translate:async(text,source,target)=>{calls.push({text,source,target});return {text:'Bonjour !',provider:'MyMemory (reserva)'};}}};
+ const context=vm.createContext({window,integrateFrameDoc:()=>null,AbortSignal,continuousProvider:''});
  const fn=vm.runInContext('(async(text,source,target)=>{'+body+'})',context);
  assert.equal(await fn('Olá!','pt-BR','fr-FR'),'Bonjour !');
- assert.deepEqual(calls,[{url:'https://test-gemini.example/translate',payload:{text:'Olá!',source:'pt-BR',target:'fr-FR'}}]);
+ assert.equal(context.continuousProvider,'MyMemory (reserva)');
+ assert.deepEqual(calls,[{text:'Olá!',source:'pt-BR',target:'fr-FR'}]);
  assert.ok(html.includes("if(intState.view==='continuous')$('intContinuousPanel').before($('quickVoicePanel'))"));
+});
+
+test('Gemini error falls back to MyMemory without ending the request',async()=>{
+ const source=await readFile(new URL('../translation/reliable.js',import.meta.url),'utf8');
+ const seen=[];
+ const window={DuoAccess:{active:true,aiUrl:'https://gemini.example',fetch:async()=>({ok:false,status:503,json:async()=>({error:'Gemini indisponível (HTTP 503)'})})}};
+ const store=browserStore({'duotranslate.provider.v1':JSON.stringify({provider:'gemini'})});
+ const context=vm.createContext({window,localStorage:store,URL,AbortController,TextEncoder,Date,setTimeout,clearTimeout,
+   fetch:async url=>{seen.push(String(url));return Response.json({responseStatus:200,responseData:{translatedText:'Bonjour'}})}});
+ vm.runInContext(source,context);
+ const first=await window.DuoReliable.translate('Bom dia','pt-BR','fr-FR');
+ assert.equal(first.text,'Bonjour');assert.equal(first.provider,'MyMemory (reserva)');
+ assert.ok(first.geminiError.includes('503'));
+ const second=await window.DuoReliable.translate('Boa tarde','pt-BR','fr-FR');
+ assert.equal(second.provider,'MyMemory');
+ assert.equal(seen.length,2);
+});
+
+test('local everyday phrasebook works by default and can be disabled explicitly',async()=>{
+ const source=await readFile(new URL('../preview/engine-v2.7/phrasebook.js',import.meta.url),'utf8');
+ const window={},localStorage=browserStore();
+ vm.runInContext(source,vm.createContext({window,localStorage}));
+ assert.equal(window.DuoPhrasebook.enabled(),true);
+ assert.equal(window.DuoPhrasebook.translate('Bom dia','pt-BR','fr-FR'),'Bonjour');
+ assert.equal(window.DuoPhrasebook.translate('Oi, você me escuta?','pt-BR','fr-FR'),null);
+ window.DuoPhrasebook.setEnabled(false);
+ assert.equal(window.DuoPhrasebook.translate('Bom dia','pt-BR','fr-FR'),null);
+});
+
+test('existing history supports all modes and continuous failures with no audio retention',async()=>{
+ const history=await readFile(new URL('../history.js',import.meta.url),'utf8');
+ const html=await readFile(new URL('../preview/v2.10/index.html',import.meta.url),'utf8');
+ assert.match(history,/continuous:'Tradução contínua'/);
+ assert.match(history,/listening:'Escutar e traduzir'/);
+ assert.ok(history.includes("error:String(entry.error||'')"));
+ assert.ok(html.includes('recordContinuousHistory(original,translated)'));
+ assert.ok(html.includes("failure:(original,reason)=>recordContinuousHistory(original,'',reason)"));
+ assert.ok(!html.includes('localStorage.setItem(key,JSON.stringify(r.stream)'));
 });

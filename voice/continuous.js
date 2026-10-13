@@ -3,7 +3,7 @@
 'use strict';
 const moduleBase=new URL('.',document.currentScript.src);
 function split(text,max=500){const chunks=[];let value=text.trim();while(value.length>max){let end=value.lastIndexOf(' ',max);if(end<max/2)end=max;chunks.push(value.slice(0,end));value=value.slice(end).trim();}if(value)chunks.push(value);return chunks;}
-function create({status,caption,result,translate,onState}){
+function create({status,caption,result,translate,onState,failure=()=>{}}){
  let run=null;
  function stop(message='Tradução contínua parada.'){
   const r=run;if(!r)return;run=null;r.cancel.abort();clearInterval(r.flushTimer);clearInterval(r.commitTimer);clearTimeout(r.connectTimer);r.socket?.close();r.stream?.getTracks().forEach(t=>t.stop());r.node?.disconnect();r.source?.disconnect();try{r.playing?.stop();}catch{}r.ctx?.close().catch(()=>{});onState(false);status(message);
@@ -42,11 +42,11 @@ function create({status,caption,result,translate,onState}){
  function flush(r){if(run!==r||!r.pending.length)return;const chunks=split(r.pending.join(' '));r.pending=[];r.queue.push(...chunks);if(r.queue.length>4){stop('A tradução acumulou atraso. Captação interrompida; confira a conexão e reinicie.');return;}pump(r);}
  async function pump(r){
   if(run!==r||r.busy||!r.queue.length)return;r.busy=true;
-  const original=r.queue.shift();
+  const original=r.queue.shift();let translatedResult=false;
   try{
    status('Traduzindo com Gemini…');
    const translated=await translate(original,r.sourceLanguage,r.targetLanguage);if(run!==r)return;
-   result(original,translated);status('Tradução pronta. Preparando áudio ElevenLabs…');
+   result(original,translated);translatedResult=true;status('Tradução pronta. Preparando áudio ElevenLabs…');
    for(const phrase of split(translated,800)){
     if(run!==r)return;
     const response=await window.DuoAccess.fetch(window.DuoAccess.voiceUrl+'/stream-tts',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({text:phrase,lang:r.targetLanguage,voiceId:r.voiceId}),signal:typeof AbortSignal.any==='function'&&typeof AbortSignal.timeout==='function'?AbortSignal.any([r.cancel.signal,AbortSignal.timeout(18000)]):r.cancel.signal});
@@ -56,7 +56,10 @@ function create({status,caption,result,translate,onState}){
     await new Promise(resolve=>{const audio=r.ctx.createBufferSource();audio.buffer=buffer;audio.connect(r.ctx.destination);r.playing=audio;audio.onended=resolve;audio.start();});
    }
    if(run===r)status('Ouvindo continuamente. Pronto para o próximo trecho.');
-  }catch(e){if(run===r)stop('Tradução interrompida: '+e.message);}
+  }catch(e){if(run===r){
+    if(!translatedResult)failure(original,String(e.message||e));
+    status((translatedResult?'Tradução exibida, mas o áudio falhou: ':'Trecho não traduzido: ')+String(e.message||e).slice(0,140)+'. Continuando a escutar.');
+   }}
   finally{r.busy=false;if(run===r)pump(r);}
  }
  return {start,stop,get active(){return !!run;}};

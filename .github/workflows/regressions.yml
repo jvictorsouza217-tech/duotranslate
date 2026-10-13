@@ -1,0 +1,19 @@
+name: DuoTranslate regression checks
+on:
+  push:
+    branches: [main, fix-translation-reliability-history-20261013]
+  pull_request:
+    branches: [main]
+permissions:
+  contents: read
+jobs:
+  tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Run offline access and translation regression tests
+        run: npm run test:access

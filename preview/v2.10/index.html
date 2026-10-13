@@ -401,7 +401,7 @@ body[data-duo-int-view="listening"] #intOnePhoneOptions .int-actions{display:non
   </div>
 </section>
 
-<script src="../../voice/picker.js?v=2"></script><script src="../../voice/continuous.js?v=2"></script><script src="../../voice/profile.js?v=1"></script><script src="../../access/client.js?v=4"></script><script src="../engine-v2.7/premium-voice.js?v=2.7-access-2"></script><script src="../../access/eleven-setup.js?v=2"></script><script src="../../access/users.js?v=1" defer></script>
+<script src="../../translation/reliable.js?v=1"></script><script src="../../voice/picker.js?v=2"></script><script src="../../voice/continuous.js?v=2"></script><script src="../../voice/profile.js?v=1"></script><script src="../../access/client.js?v=4"></script><script src="../engine-v2.7/premium-voice.js?v=2.7-access-2"></script><script src="../../access/eleven-setup.js?v=2"></script><script src="../../access/users.js?v=1" defer></script>
 <script>
 (async()=>{'use strict';
 await window.DuoAccess?.ready;
@@ -692,7 +692,7 @@ if(!intState.frameObserver){intState.frameObserver=new MutationObserver(()=>requ
 intState.frameReady=true;showFrameRoute();if(['nearby','listening','continuous'].includes(intState.view))applyOnePhone(false);return true;}
 function resizeIntFrame(){if(!intState.frameReady)return;const doc=integrateFrameDoc();if(!doc)return;const f=$('duoRealFrame');const min=420;const natural=Math.max(doc.body.scrollHeight,doc.documentElement.scrollHeight);const h=Math.max(min,Math.min(natural+20,3600));if(Math.abs((parseInt(f.style.height)||0)-h)>8)f.style.height=h+'px';}
 function frameMode(){if(intState.view==='connect')return 'connect';if(intState.view==='talk')return 'talk';if(['solo','nearby','listening'].includes(intState.view))return 'solo';if(intState.view==='history')return 'history';if(intState.view==='settings')return ({voices:'voices',ai:'ai',usage:'usage'}[intState.settings]||'');return '';}
-function showFrameRoute(){const doc=integrateFrameDoc();if(!doc)return;const view=frameMode();doc.body.dataset.duoView=view;doc.body.dataset.duoContext=intState.view;if(view==='voices')doc.getElementById('voicePanel').open=true;requestAnimationFrame(()=>requestAnimationFrame(resizeIntFrame));}
+function showFrameRoute(){const doc=integrateFrameDoc();if(!doc)return;const view=frameMode();doc.body.dataset.duoView=view;doc.body.dataset.duoContext=intState.view;if(view==='voices')doc.getElementById('voicePanel').open=true;if(view==='history')doc.defaultView?.DuoHistory?.refresh?.();requestAnimationFrame(()=>requestAnimationFrame(resizeIntFrame));}
 function updateIntPrefs(){const d=intState.data;if(!d)return;['intSpeak','intSettingSpeak'].forEach(id=>$(id).value=d.speak);['intHear','intSettingHear'].forEach(id=>$(id).value=d.hear);$('intInterfaceLang').value=d.ui;const doc=integrateFrameDoc();if(doc)applyPrefsToEmbeddedBeta(d);}
 function applyOnePhone(showMsg=true){
  const a=$('oneSource').value,b=$('oneTarget').value;
@@ -762,7 +762,7 @@ async function testPremiumVoice(){
  return quickVoiceSample('premiumVoiceId',$('premiumLanguage').value,'premiumStatus','premiumTest');
 }
 function renderPhrasePanel(){
- const on=localStorage.getItem('duotranslate.phrasebook.enabled.v1')==='1';
+ const on=localStorage.getItem('duotranslate.phrasebook.enabled.v1')!=='0';
  $('intPhraseToggle').checked=on;
  const doc=integrateFrameDoc();const book=doc?.defaultView?.DuoPhrasebook;
  const samples=book?.sample(intState.data?.speak||'pt-BR',intState.data?.hear||'fr-FR')||[];
@@ -916,21 +916,32 @@ const frame=$('duoRealFrame');if(!frame.getAttribute('src')||frame.getAttribute(
  const code=readTrustedCodes().gemini,doc=integrateFrameDoc(),field=doc?.getElementById('aiWorkerPin');
  if(code&&field&&!field.value){field.value=code;field.dispatchEvent(new doc.defaultView.Event('change',{bubbles:true}));}}, {once:true});const roomId=String(new URLSearchParams(location.search).get('room')||'').toUpperCase();const roomParam=/^[A-Z0-9]{8}$/.test(roomId)?'?room='+roomId+'&duoAccess=2':'?duoAccess=2';frame.src=new URL('../engine-v2.7/'+roomParam,window.location.href).href}else if(!fromReload)applyPrefsToEmbeddedBeta(data);window.scrollTo(0,0)}
 function leaveIntegrated(backToStart){window.DuoVoicePicker.stop();continuous.stop();const frame=$('duoRealFrame');intState.frameObserver?.disconnect();intState.frameObserver=null;intState.frameReady=false;frame.src='about:blank';document.body.classList.remove('integrated-active');$('integratedApp').classList.add('integration-hidden');show(backToStart?0:2)}
+function recordContinuousHistory(original,translation,error=''){
+ try{
+  if(localStorage.getItem('duotranslate.history.enabled.v1')==='false')return;
+  const entry={mode:'continuous',direction:'sent',source:$('oneSource').value,target:$('oneTarget').value,original,translation:translation||'[tradução não concluída]',error,provider:continuousProvider||'DuoTranslate contínuo'};
+  const iframeHistory=integrateFrameDoc()?.defaultView?.DuoHistory;
+  if(iframeHistory?.add){iframeHistory.add(entry);return;}
+  // Same local history store as the Beta iframe. Audio is never retained.
+  const key='duotranslate.local.history.v1',list=JSON.parse(localStorage.getItem(key)||'[]');
+  if(!Array.isArray(list))return;
+  list.unshift({...entry,at:new Date().toISOString(),id:window.crypto?.randomUUID?.()||'continuous-'+Date.now()});
+  localStorage.setItem(key,JSON.stringify(list.slice(0,250)));
+ }catch(e){$('continuousStatus').textContent='Histórico não pôde ser salvo neste navegador: '+String(e.message||e).slice(0,80);}
+}
+let continuousProvider='';
 const continuous=window.DuoContinuous.create({
  status:message=>{$('continuousStatus').textContent=message;},caption:text=>{$('continuousCaption').textContent=text;},
- result:(original,translated)=>{const row=document.createElement('div');row.className='int-profile-row';const p=document.createElement('p');p.textContent=original;const out=document.createElement('strong');out.textContent=translated;row.append(p,out);$('continuousResults').prepend(row);while($('continuousResults').children.length>12)$('continuousResults').lastElementChild.remove();},
- // Continuous speech uses authenticated Gemini directly, not a hidden Beta iframe.
+ result:(original,translated)=>{const row=document.createElement('div');row.className='int-profile-row';const p=document.createElement('p');p.textContent=original;const out=document.createElement('strong');out.textContent=translated;row.append(p,out);$('continuousResults').prepend(row);while($('continuousResults').children.length>12)$('continuousResults').lastElementChild.remove();recordContinuousHistory(original,translated);},
+ failure:(original,reason)=>recordContinuousHistory(original,'',reason),
  translate:async(text,source,target)=>{
-  if(!window.DuoAccess?.active||!window.DuoAccess.aiUrl)throw new Error('Ative seu acesso ao DuoTranslate antes de iniciar a tradução contínua.');
-  const signal=typeof AbortSignal.timeout==='function'?AbortSignal.timeout(20000):undefined;
-  const response=await window.DuoAccess.fetch(window.DuoAccess.aiUrl+'/translate',{
-   method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({text:text.slice(0,600),source,target}),signal,cache:'no-store'
-  });
-  let data;try{data=await response.json();}catch{throw new Error('O tradutor não retornou uma resposta válida.');}
-  if(!response.ok)throw new Error(data?.error||'O Gemini respondeu HTTP '+response.status+'.');
-  const translation=String(data?.translation||'').trim();
-  if(!translation)throw new Error('O Gemini não retornou uma tradução.');
-  return translation;
+  const quick=integrateFrameDoc()?.defaultView?.DuoPhrasebook?.translate(text,source,target);
+  if(quick!==null&&quick!==undefined){continuousProvider='Vocabulário local';return quick;}
+  if(!window.DuoReliable)throw Error('O módulo de tradução não carregou. Reabra a página.');
+  const out=await window.DuoReliable.translate(text,source,target);
+  continuousProvider=out.provider;
+  if(out.geminiError)$('continuousStatus').textContent='Gemini indisponível. Traduzindo com MyMemory, sem interromper a escuta.';
+  return out.text;
  },
  onState:active=>{$('continuousToggle').textContent=active?'Parar tradução contínua':'Iniciar tradução contínua';$('oneSource').disabled=active;$('oneTarget').disabled=active;}
 });

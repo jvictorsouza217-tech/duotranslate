@@ -169,6 +169,7 @@ function bubble(side,original,translation,error=false,translationMs=null){
  el.messages.scrollTop=el.messages.scrollHeight;
 }
 async function translate(text,source,target){
+  if(window.DuoReliable){const value=await window.DuoReliable.translate(text,source,target);return value.text;}
  const quick=window.DuoPhrasebook?.translate(text,source,target);if(quick!==null&&quick!==undefined)return quick;
  if(window.DuoAI?.enabled())return window.DuoAI.translate(text,source,target);
  if(source===target)return text;
@@ -220,10 +221,10 @@ function phrase(text){
    const result=await translate(original,state.language,state.otherHear);
    const translationMs=Math.round(performance.now()-translationStart);
    if(session!==state.session || !connected())return;
-   if(!transmit({type:'speech',original:original,translation:result,target:state.otherHear,translationMs,provider:window.DuoPhrasebook?.lastHit()?'Vocabulário local':(window.DuoAI?.label()||'MyMemory')}))
+   if(!transmit({type:'speech',original:original,translation:result,target:state.otherHear,translationMs,provider:window.DuoReliable?.lastProvider()||(window.DuoPhrasebook?.lastHit()?'Vocabulário local':(window.DuoAI?.label()||'MyMemory'))}))
     throw Error('Não foi possível enviar a tradução.');
    bubble('mine',original,result,false,translationMs);
-   window.DuoHistory?.add({mode:'duo',direction:'sent',source:state.language,target:state.otherHear,original,translation:result,translationMs,provider:window.DuoPhrasebook?.lastHit()?'Vocabulário local':(window.DuoAI?.label()||'MyMemory')});
+   window.DuoHistory?.add({mode:'duo',direction:'sent',source:state.language,target:state.otherHear,original,translation:result,translationMs,provider:window.DuoReliable?.lastProvider()||(window.DuoPhrasebook?.lastHit()?'Vocabulário local':(window.DuoAI?.label()||'MyMemory'))});
    status(state.listen?'Ouvindo...':'Tradução enviada ao outro celular.');
   }catch(e){
    if(session!==state.session)return;
