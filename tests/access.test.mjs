@@ -4,6 +4,7 @@ import {readFile} from 'node:fs/promises';
 import vm from 'node:vm';
 import aiWorker from '../cloudflare/gemini-worker.js';
 import voiceWorker from '../cloudflare/voice-worker-test.js';
+import {createLiveToken} from '../cloudflare/live-token.js';
 import {DuoAccessStore,ACCESS_ORIGIN,ACCESS_SERVICES} from '../cloudflare/access-store.js';
 
 const OWNER_PIN='developer-only-test-pin',VOICE_PIN='voice-only-test-pin';
@@ -612,4 +613,39 @@ test('existing history supports all modes and continuous failures with no audio 
  assert.ok(html.includes('recordContinuousHistory(original,translated)'));
  assert.ok(html.includes("failure:(original,reason)=>recordContinuousHistory(original,'',reason)"));
  assert.ok(!html.includes('localStorage.setItem(key,JSON.stringify(r.stream)'));
+});
+
+test('experimental Live Translate token stays off by default and rejects guests without API calls',async()=>{
+ const f=fixture(),{admin,access}=await member(f);
+ let external=0,old=globalThis.fetch;globalThis.fetch=async()=>{external++;throw Error('Token service must not be called');};
+ try{
+  const off=await createLiveToken(request('/live-token',{target:'fr-FR'},auth(admin.token)),f.env);
+  assert.equal(off.status,503);
+  f.env.ENABLE_LIVE_TRANSLATE='yes';
+  const denied=await createLiveToken(request('/live-token',{target:'fr-FR'},auth(access.token)),f.env);
+  assert.equal(denied.status,403);
+  assert.equal(external,0);
+ }finally{globalThis.fetch=old;}
+});
+
+test('authorized Live pilot issues a short-lived, target-locked token without exposing API key',async()=>{
+ const f=fixture(),admin=await owner(f);f.env.ENABLE_LIVE_TRANSLATE='yes';
+ let config=null,old=globalThis.fetch;globalThis.fetch=async(_url,init)=>{config=JSON.parse(init.body);return Response.json({name:'auth_tokens/test-one-use'});};
+ try{
+  const response=await createLiveToken(request('/live-token',{target:'pt-BR'},auth(admin.token)),f.env);
+  assert.equal(response.status,200);const json=await response.json();
+  assert.equal(json.token,'auth_tokens/test-one-use');
+  assert.equal(config.uses,1);
+  assert.equal(config.liveConnectConstraints.config.translationConfig.targetLanguageCode,'pt-BR');
+  assert.equal(config.liveConnectConstraints.model,'models/gemini-3.5-live-translate-preview');
+  assert.ok(!JSON.stringify(json).includes(f.env.GEMINI_API_KEY));
+ }finally{globalThis.fetch=old;}
+});
+
+test('pilot is hidden on the normal DuoTranslate route and leaves existing stylesheet intact',async()=>{
+ const source=await readFile(new URL('../preview/v2.10/index.html',import.meta.url),'utf8');
+ assert.match(source,/id="livePilotToggle" class="integration-hidden int-ghost"/);
+ assert.ok(source.includes("get('livePilot')==='1'&&window.DuoAccess?.role==='admin'"));
+ assert.ok(source.includes('window.DuoLiveTranslate.create'));
+ assert.ok(source.includes('livePilot.stop()'));
 });
