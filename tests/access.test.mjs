@@ -464,3 +464,85 @@ test('active access renews near expiration without permitting a revoked user to 
  assert.equal((await aiWorker.fetch(request('/access/revoke',{userId:access.user.id},auth(admin.token)),f.env)).status,200);
  assert.equal((await aiWorker.fetch(request('/access/session',undefined,auth(access.token)),f.env)).status,401);
 });
+
+test('invitation status follows redemption, profile name and revocation without allowing role escalation',async()=>{
+ const f=fixture(),admin=await owner(f),invite=await invitation(f,admin);
+ assert.equal(invite.user.status,'pending');
+ const activated=await (await aiWorker.fetch(request('/access/redeem',{invite:invite.invite}),f.env)).json();
+ assert.equal(activated.user.status,'active');assert.ok(activated.user.activatedAt);
+ const changed=await aiWorker.fetch(request('/access/profile',{name:'Pedro',role:'admin',userId:'owner'},auth(activated.token)),f.env);
+ assert.equal(changed.status,200);const value=await changed.json();assert.equal(value.user.label,'Pedro');assert.equal(value.user.role,'member');assert.equal(value.user.id,activated.user.id);
+ const list=await (await aiWorker.fetch(request('/access/users',undefined,auth(admin.token)),f.env)).json();
+ assert.equal(list.users.find(u=>u.id===activated.user.id).label,'Pedro');assert.equal(list.users.find(u=>u.id==='owner').label,'Administrador');
+ await aiWorker.fetch(request('/access/revoke',{userId:activated.user.id},auth(admin.token)),f.env);
+ assert.equal((await aiWorker.fetch(request('/access/profile',{name:'Other'},auth(activated.token)),f.env)).status,401);
+});
+
+test('all skipped samples permit results and opening the app without a saved profile',async()=>{
+ const nodes=await inlineNodes(),fields=new Proxy({}, {get:(o,k)=>o[k]||=( {classList:{toggle(){}},value:'',textContent:'',disabled:false})});let opened=false;
+ const context=vm.createContext({$:id=>fields[id],flow:()=>Array.from({length:25},()=>'{n}'),locale:()=>['pt-BR','Português','pt'],voiceSubstep:2,isRecording:false,index:4,
+  results:Array.from({length:4},(_,position)=>({position,success:false})),deviceState:{kind:'phone',mic:'built-in',currentId:null},
+  setVoiceSubstep:n=>context.voiceSubstep=n,save(){},enterIntegrated(){opened=true;},persistIntegratedConfig:()=>({complete:true}),window:{DuoVoiceProfile:{activate(){}}}});
+ vm.runInContext(nodes.functions.renderSubstep,context);vm.runInContext('renderSubstep()',context);assert.equal(fields.next2.disabled,false);
+ const next=vm.runInContext('('+nodes.handlers.next2+')',context);next();assert.equal(context.voiceSubstep,3);
+ vm.runInContext('renderSubstep()',context);assert.equal(fields.next2.disabled,false);next();assert.equal(opened,true);
+});
+
+test('continuous synthesis requires individual access, respects its own limit and leaves legacy limits intact',async()=>{
+ const f=fixture(),{access,admin}=await member(f);f.voice.STREAM_VOICE_LIMITER={limit:async()=>({success:true})};
+ await withProviders(async calls=>{
+  const body={text:'Bonjour '.repeat(40),voiceId:selectedVoice,lang:'fr-FR'};
+  assert.equal((await voiceWorker.fetch(request('/stream-tts',body,auth(access.token)),f.voice)).status,200);
+  assert.equal((await voiceWorker.fetch(request('/tts',body,auth(access.token)),f.voice)).status,400);
+  assert.equal((await voiceWorker.fetch(request('/stream-tts',body,{'X-Duo-Pin':VOICE_PIN}),f.voice)).status,401);
+  f.voice.STREAM_VOICE_LIMITER={limit:async()=>({success:false})};
+  assert.equal((await voiceWorker.fetch(request('/stream-tts',body,auth(access.token)),f.voice)).status,429);
+  await aiWorker.fetch(request('/access/revoke',{userId:access.user.id},auth(admin.token)),f.env);
+  assert.equal((await voiceWorker.fetch(request('/stream-tts',body,auth(access.token)),f.voice)).status,401);assert.equal(calls.length,1);
+ });
+});
+
+test('voice profile uses measured pauses and sensitivity and skipping removes personalized endpointing',async()=>{
+ const localStorage=browserStore(),window={};const context=vm.createContext({window,localStorage});
+ vm.runInContext(await readFile(new URL('../voice/profile.js',import.meta.url),'utf8'),context);
+ const api=window.DuoVoiceProfile;
+ const make=(pause)=>Array.from({length:80},(_,i)=>({time:i*50,rms:i<20||i>=20+pause?.08:.002,pitch:160}));
+ const short=api.summarize(make(4)),long=api.summarize(make(20));assert.ok(long.pauseMs>short.pauseMs);assert.equal(api.summarize(Array.from({length:20},(_,i)=>({time:i*50,rms:0,pitch:0}))),null);
+ api.activate([{success:true,acoustic:long}],'Test microphone');assert.equal(api.current().pauseMs,long.pauseMs);
+ const end=api.endpoint(api.current());assert.equal(end(.08,100),false);assert.equal(end(0,100+short.pauseMs),false);assert.equal(end(0,101+long.pauseMs),true);
+ api.activate([{success:false}],'');assert.equal(api.current(),null);
+});
+
+test('calibrated capture delivers a complete turn and releases the microphone on stop',async()=>{
+ const localStorage=browserStore();localStorage.setItem('duotranslate.acoustic-profile.v1',JSON.stringify({version:1,threshold:.01,pauseMs:900}));
+ let stopped=0;const delivered=[];const window={};const context=vm.createContext({window,localStorage,setTimeout,clearTimeout,clearInterval,setInterval,
+  navigator:{mediaDevices:{getUserMedia:async()=>({getTracks:()=>[{stop(){stopped++;}}]})}}});
+ vm.runInContext(await readFile(new URL('../voice/profile.js',import.meta.url),'utf8'),context);
+ const rec={onresult:e=>delivered.push(e.results[0][0].transcript),onend(){},stop(){}};
+ const release=window.DuoVoiceProfile.attach(rec);assert.equal(rec.continuous,true);
+ await rec.onstart();rec.onresult({resultIndex:0,results:[Object.assign([{transcript:'Olá'}],{isFinal:true}),Object.assign([{transcript:'Jérôme'}],{isFinal:true})]});assert.equal(delivered.length,0);
+ rec.onend();assert.deepEqual(delivered,['Olá Jérôme']);assert.equal(stopped,1);release();assert.equal(stopped,1);
+});
+
+test('continuous listening keeps capturing during playback and releases the microphone on exit',async()=>{
+ let stopped=0,closed=0,spoken=0,translated=0,logged=[];const timers=new Map();
+ const socket={readyState:1,bufferedAmount:0,send(message){logged.push(JSON.parse(message));},close(){closed++;}};
+ const track={stop(){stopped++;}};
+ const ctx={resume:async()=>{},audioWorklet:{addModule:async()=>{}},createMediaStreamSource:()=>({connect(){},disconnect(){}}),
+  createBufferSource:()=>({connect(){},start(){spoken++;queueMicrotask(()=>this.onended());},stop(){}}),
+  decodeAudioData:async()=>({}),destination:{},close:async()=>{}};
+ const window={AudioContext:class {constructor(){return ctx;}},DuoAccess:{configure:async()=>{},openRealtime:()=>socket,voiceUrl:'https://voice.example',fetch:async()=>({ok:true,arrayBuffer:async()=>new ArrayBuffer(4)})}};
+ const document={currentScript:{src:'https://app.example/voice/continuous.js'}};
+ const context=vm.createContext({window,document,navigator:{mediaDevices:{getUserMedia:async()=>({getTracks:()=>[track]})}},
+  AudioWorkletNode:class {port={onmessage:null};connect(){}disconnect(){}},setInterval:(fn,ms)=>{timers.set(ms,fn);return ms;},clearInterval:ms=>timers.delete(ms),setTimeout,clearTimeout,
+  AbortController,AbortSignal,btoa,URL,Uint8Array,queueMicrotask});
+ vm.runInContext(await readFile(new URL('../voice/continuous.js',import.meta.url),'utf8'),context);
+ const api=window.DuoContinuous.create({status(){},caption(){},result(){},onState(){},translate:async()=>{translated++;return 'Bonjour';}});
+ await api.start('pt-BR','fr-FR',selectedVoice);
+ socket.onmessage({data:JSON.stringify({message_type:'session_started'})});
+ socket.onmessage({data:JSON.stringify({message_type:'committed_transcript',text:'Olá'})});
+ timers.get(2500)();await new Promise(resolve=>setImmediate(resolve));
+ assert.equal(stopped,0);assert.equal(api.active,true);
+ assert.equal(translated,1);assert.equal(spoken,1);
+ api.stop();assert.equal(stopped,1);assert.equal(closed,1);
+});

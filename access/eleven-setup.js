@@ -26,7 +26,7 @@ function selectVoice(lang,id,enabled=true) {
 }
 function directory() {
  const entries=read(DIRECTORY,[]);
- return Array.isArray(entries)?entries.filter(v=>valid(v?.id)).map(v=>({id:v.id,name:String(v.name||'Voz ElevenLabs').slice(0,120)})).slice(0,250):[];
+ return Array.isArray(entries)?entries.filter(v=>valid(v?.id)).map(v=>({id:v.id,name:String(v.name||'Voz ElevenLabs').slice(0,120),preview:typeof v.preview==='string'&&/^https:\/\/(storage\.googleapis\.com|[^/]*\.elevenlabs\.io)\//.test(v.preview)?v.preview:''})).slice(0,250):[];
 }
 function choices(lang) {
  const cfg=get(),list=directory(),ids=new Set(list.map(v=>v.id));
@@ -57,7 +57,7 @@ async function loadVoices(force=false) {
   finally{clearTimeout(timer);}
   let data;try{data=await response.json();}catch(e){throw new Error('Não foi possível carregar as vozes.');}
   if(!response.ok)throw new Error(data.error||'Lista de vozes indisponível.');
-  const list=Array.isArray(data.voices)?data.voices.filter(v=>valid(v?.id)).map(v=>({id:v.id,name:String(v.name||'Voz ElevenLabs').slice(0,120)})):[];
+  const list=Array.isArray(data.voices)?data.voices.filter(v=>valid(v?.id)).map(v=>({id:v.id,name:String(v.name||'Voz ElevenLabs').slice(0,120),preview:typeof v.preview==='string'&&/^https:\/\/(storage\.googleapis\.com|[^/]*\.elevenlabs\.io)\//.test(v.preview)?v.preview:''})):[];
   if(!list.length)throw new Error('Nenhuma voz disponível no serviço. A voz que já foi salva continua selecionada.');
   try{localStorage.setItem(DIRECTORY,JSON.stringify(list));}catch(e){}
   lastError='';retryAfter=0;return list;

@@ -4,13 +4,34 @@
   "main": "cloudflare/voice-worker-test.js",
   "compatibility_date": "2026-10-12",
   "workers_dev": true,
-  "services": [{ "binding": "DUO_ACCESS_SERVICE", "service": "duotranslate-ai" }],
+  "services": [
+    {
+      "binding": "DUO_ACCESS_SERVICE",
+      "service": "duotranslate-ai"
+    }
+  ],
   "ratelimits": [
     {
       "name": "VOICE_LIMITER",
       "namespace_id": "1428",
       "simple": {
         "limit": 4,
+        "period": 60
+      }
+    },
+    {
+      "name": "REALTIME_LIMITER",
+      "namespace_id": "1429",
+      "simple": {
+        "limit": 6,
+        "period": 60
+      }
+    },
+    {
+      "name": "STREAM_VOICE_LIMITER",
+      "namespace_id": "1430",
+      "simple": {
+        "limit": 30,
         "period": 60
       }
     }

@@ -24,7 +24,9 @@ function render(){
  ui.toggle.disabled=!Recognition && !s.enabled;
  if(!Recognition && !s.enabled)status('Reconhecimento de voz não disponível neste navegador. Use a frase de exemplo.');
 }
+let releaseVoiceProfile=()=>{};
 function stopCapture(){
+ releaseVoiceProfile();
  clearTimeout(s.timer); s.timer=null;
  const r=s.rec;
  if(r){try{r.abort();}catch(e){}}
@@ -146,6 +148,7 @@ function startCapture(){
   s.rec=null;
   scheduleRestart();
  };
+ if(window.DuoAccess&&document.body.dataset.duoContext==='solo')releaseVoiceProfile=window.DuoVoiceProfile?.attach(rec)||(()=>{});
  try{rec.start();}
  catch(e){s.rec=null;stop();status('Não foi possível iniciar o microfone. Tente novamente.');}
 }
