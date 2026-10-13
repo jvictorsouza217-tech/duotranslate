@@ -151,7 +151,7 @@ async function signedFetch(input,init={}) {
  await access.ready;
  const url=new URL(typeof input==='string' || input instanceof URL ? String(input):input.url,location.href);
  const trusted=(url.origin===API && ['/translate','/analyze'].includes(url.pathname)) ||
-  (url.origin===VOICE && ['/tts','/voices'].includes(url.pathname));
+  (url.origin===VOICE && ['/tts','/voices','/stream-tts'].includes(url.pathname));
  if(!trusted || !session?.token)return nativeFetch(input,init);
  const headers=new Headers(init.headers || (input instanceof Request?input.headers:undefined));
  headers.delete('X-Duo-Pin');headers.set('Authorization','Bearer '+session.token);
@@ -181,6 +181,8 @@ async function copyInvite(room,options={}) {
 }
 const access={fetch:signedFetch,invite,renderStatus,
  configure,copyInvite,
+ openRealtime(language){if(!session?.token)throw new Error('Ative seu acesso individual em Configurações antes de iniciar.');const url=new URL(VOICE+'/realtime');url.protocol='wss:';url.searchParams.set('language',language.slice(0,2));return new WebSocket(url,['duo-v1','duo-access-'+session.token]);},
+ async syncName(name){await access.ready;if(!session||session.user.label===name)return;const value=await call('/access/profile',{name});saveSession({...session,user:value.user});},
  get active(){return !!session;},get role(){return session?.user?.role||'';},
  get remembered(){return !!get(localStorage,KEY)||Object.values(read(localStorage,TRUSTED,{})).some(realPin);},
  get voiceUrl(){return VOICE;},

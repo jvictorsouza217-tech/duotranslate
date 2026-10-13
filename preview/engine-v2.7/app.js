@@ -77,7 +77,9 @@ function transmit(data){
  if(!state.conn || !state.conn.open) return false;
  try{state.conn.send(data);return true;}catch(e){console.warn(e);return false;}
 }
+let releaseVoiceProfile=()=>{};
 function haltMic(){
+ releaseVoiceProfile();
  clearTimeout(state.restart);
  if(state.instance){try{state.instance.abort();}catch(e){}}
  state.recognizing=false;
@@ -269,6 +271,7 @@ function startRecognition(){
     clearTimeout(state.restart);state.restart=setTimeout(startRecognition,650);
    }
   };
+  releaseVoiceProfile=window.DuoAccess?window.DuoVoiceProfile?.attach(instance)||(()=>{}):()=>{};
   instance.start();status('Ouvindo... fale normalmente.');
  }catch(e){console.warn(e);notify('Não foi possível iniciar o microfone neste navegador.',true);stopMic();}
 }

@@ -44,7 +44,7 @@ function preferences(value={}) {
  return {voices,voiceEnabled:value.voiceEnabled===true};
 }
 function publicUser(user) {
- return {id:user.id,label:user.label,role:user.role,active:user.active,createdAt:user.createdAt};
+ return {id:user.id,label:user.label,role:user.role,active:user.active,createdAt:user.createdAt,activatedAt:user.activatedAt||null,inviteExpiresAt:user.inviteExpiresAt||null,status:!user.active?'revoked':user.activatedAt||user.role==='admin'?'active':user.inviteExpiresAt?(user.inviteExpiresAt<=Date.now()?'expired':'pending'):'unknown'};
 }
 
 export class DuoAccessStore {
@@ -85,6 +85,7 @@ export class DuoAccessStore {
     const user=await storage.get('user:'+invite.userId);
     if(!user || !user.active)return accessJson({error:'Este acesso foi revogado.'},401);
     await storage.delete(key);
+    user.activatedAt=Date.now();await storage.put('user:'+user.id,user);
     return accessJson(await this.issueSession(storage,user));
    }
    const current=await this.session(storage,token);
@@ -97,6 +98,13 @@ export class DuoAccessStore {
     return accessJson({expiresAt:current.expiresAt,user:publicUser(current.user),services:ACCESS_SERVICES,preferences:current.user.preferences});
    }
    if(path==='/check' && request.method==='GET')return accessJson({authorized:true,user:publicUser(current.user)});
+   if(path==='/profile' && request.method==='POST'){
+    const name=typeof input.name==='string'?input.name.trim().slice(0,60):'';
+    if(!name)return accessJson({error:'Informe seu nome.'},400);
+    current.user.label=name;current.user.activatedAt ||= Date.now();
+    await storage.put('user:'+current.user.id,current.user);
+    return accessJson({user:publicUser(current.user)});
+   }
    if(current.user.role!=='admin')return accessJson({error:'Somente o administrador pode gerenciar acessos.'},403);
    if(path==='/invites' && request.method==='POST') {
     const hours=input.expiresInHours===undefined?24:Number(input.expiresInHours);
@@ -104,6 +112,7 @@ export class DuoAccessStore {
     const user={id:crypto.randomUUID(),label:String(input.label||'Convidado').trim().slice(0,60)||'Convidado',
      role:'member',active:true,createdAt:Date.now(),preferences:preferences(input.preferences)};
     const invite=randomToken(),expiresAt=Date.now()+hours*3600000;
+    user.inviteExpiresAt=expiresAt;
     await storage.put('user:'+user.id,user);
     await storage.put('invite:'+await digest(invite),{userId:user.id,expiresAt});
     return accessJson({invite,expiresAt,user:publicUser(user)});
@@ -131,7 +140,7 @@ export function accessStore(env) {
 export async function handleAccessRequest(request,env,checkAdmin) {
  const path=new URL(request.url).pathname;
  const routes={'/access/admin/login':'/owner','/access/redeem':'/redeem','/access/session':'/session',
-  '/access/check':'/check','/access/invites':'/invites','/access/users':'/users','/access/revoke':'/revoke'};
+  '/access/check':'/check','/access/profile':'/profile','/access/invites':'/invites','/access/users':'/users','/access/revoke':'/revoke'};
  if(!Object.hasOwn(routes,path))return accessJson({error:'Rota não encontrada.'},404);
  const method=['/access/session','/access/check','/access/users'].includes(path)?'GET':'POST';
  if(request.method!==method)return accessJson({error:'Método não permitido.'},405);
