@@ -53,6 +53,7 @@ function addResult(original,translated,error,translationMs=null){
  while(ui.results.children.length>8)ui.results.lastElementChild.remove();
 }
 async function translate(text,from,to){
+  if(window.DuoReliable){const value=await window.DuoReliable.translate(text,from,to);return value.text;}
  const quick=window.DuoPhrasebook?.translate(text,from,to);if(quick!==null&&quick!==undefined)return quick;
  if(window.DuoAI?.enabled())return window.DuoAI.translate(text,from,to);
  const url=new URL('https://api.mymemory.translated.net/get');
@@ -166,7 +167,7 @@ async function process(input){
   s.last={text:out,lang:target()};
   addResult(original,out,false,translationMs);
   const direction=$('soloDirection');if(direction)direction.textContent=languages[ui.source.value].flag+' '+languages[ui.source.value].name+' → '+languages[target()].flag+' '+languages[target()].name;
-  window.DuoHistory?.add({mode:'solo',direction:'sent',source:ui.source.value,target:target(),original,translation:out,translationMs,provider:window.DuoAI?.label()||'MyMemory'});
+  window.DuoHistory?.add({mode:'solo',direction:'sent',source:ui.source.value,target:target(),original,translation:out,translationMs,provider:window.DuoReliable?.lastProvider()||(window.DuoAI?.label()||'MyMemory')});
   status('Tradução concluída. Reproduzindo em '+languages[target()].name+'...');
   render();
   speak(out,target(),()=>{
