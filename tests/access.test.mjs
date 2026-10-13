@@ -561,17 +561,18 @@ test('ElevenLabs voice selection synthesizes a language-specific sample instead 
  assert.ok(button);button.onclick();
  assert.equal(generated,1);assert.equal(recordedPreview,0);assert.equal(select.value,selectedVoice);
 });
-test('continuous Gemini translation bypasses the hidden iframe and uses the authorized service',async()=>{
+test('continuous translation uses shared provider fallback without depending on the hidden iframe',async()=>{
  const html=await readFile(new URL('../preview/v2.10/index.html',import.meta.url),'utf8');
  const mark='translate:async(text,source,target)=>{',start=html.indexOf(mark,html.indexOf('const continuous=window.DuoContinuous.create'));
  const end=html.indexOf('\n },\n onState:',start);
  assert.ok(start>0&&end>start);
  const body=html.slice(start+mark.length,end),calls=[];
- const window={DuoAccess:{active:true,aiUrl:'https://test-gemini.example',fetch:async(url,opts)=>{calls.push({url,payload:JSON.parse(opts.body)});return {ok:true,json:async()=>({translation:'Bonjour !'})};}}};
- const context=vm.createContext({window,AbortSignal});
+ const window={DuoReliable:{translate:async(text,source,target)=>{calls.push({text,source,target});return {text:'Bonjour !',provider:'MyMemory (reserva)'};}}};
+ const context=vm.createContext({window,integrateFrameDoc:()=>null,AbortSignal,continuousProvider:''});
  const fn=vm.runInContext('(async(text,source,target)=>{'+body+'})',context);
  assert.equal(await fn('Olá!','pt-BR','fr-FR'),'Bonjour !');
- assert.deepEqual(calls,[{url:'https://test-gemini.example/translate',payload:{text:'Olá!',source:'pt-BR',target:'fr-FR'}}]);
+ assert.equal(context.continuousProvider,'MyMemory (reserva)');
+ assert.deepEqual(calls,[{text:'Olá!',source:'pt-BR',target:'fr-FR'}]);
  assert.ok(html.includes("if(intState.view==='continuous')$('intContinuousPanel').before($('quickVoicePanel'))"));
 });
 
