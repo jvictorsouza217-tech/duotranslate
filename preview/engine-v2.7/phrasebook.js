@@ -22,9 +22,14 @@ function translate(text,source,target){
  lastHit=false;
  if(!enabled()||source===target||!lookup[source]||!lookup[target])return null;
  const word=norm(text);
- // 90 characters max and 1 full phrase; never match fragments inside a sentence.
+ // 90 characters max and one entire phrase. Common spoken Portuguese
+ // variants are handled locally to avoid an unneeded external translation.
  if(!word||word.length>90)return null;
- const id=lookup[source].get(word);
+ if(source==='pt-BR'&&target==='fr-FR'&&word==='tudo bem'){
+  lastHit=true;return /[?？]\s*$/.test(String(text))?'Ça va ?':'Tout va bien.';
+ }
+ const canonical=source==='pt-BR'&&word==='ola'?'olá':word;
+ const id=lookup[source].get(canonical);
  if(!id)return null;
  lastHit=true;
  try{
