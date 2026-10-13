@@ -18,7 +18,7 @@ function enabled(lang){
 }
 async function speak(text,lang){
  if(!enabled(lang))throw Error('Voz ElevenLabs não configurada para o idioma.');
- const individual=!!document.body.dataset.duoContext&&window.DuoAccess?.active===true;
+ const individual=!!document.body?.dataset?.duoContext&&window.DuoAccess?.active===true;
  if(text.length>(individual?900:220))throw Error('Frase longa demais para o serviço de voz.');
  const path=individual?'/stream-tts':'/tts';
  const u=endpoint(),controller=new AbortController(),timer=setTimeout(()=>controller.abort(),17000);
