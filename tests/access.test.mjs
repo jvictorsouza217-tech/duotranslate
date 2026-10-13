@@ -179,8 +179,8 @@ test('unauthorized origins and missing access bindings fail closed',async()=>{
 function browserStore(initial={}) {
  const values=new Map(Object.entries(initial));return {getItem:k=>values.get(k)||null,setItem:(k,v)=>values.set(k,String(v)),removeItem:k=>values.delete(k),values};
 }
-async function client(f,href,initial={},top=null) {
- const localStorage=browserStore(initial),sessionStorage=browserStore(),requests=[];
+async function client(f,href,initial={},top=null,tabInitial={}) {
+ const localStorage=browserStore(initial),sessionStorage=browserStore(tabInitial),requests=[];
  const location={href,pathname:new URL(href).pathname,hash:new URL(href).hash};
  const document={getElementById:()=>null,addEventListener:()=>{}};
  const win={fetch:async(input,init={})=>{
@@ -193,10 +193,10 @@ async function client(f,href,initial={},top=null) {
  win.parent=top||win;
  const context=vm.createContext({window:win,localStorage,sessionStorage,location,document,
   history:{replaceState:(_a,_b,url)=>{location.href=url;location.hash=new URL(url).hash;}},
-  Headers,Request,URL,URLSearchParams,AbortController,setTimeout,clearTimeout});
+  Headers,Request,URL,URLSearchParams,AbortController,Blob,Event,setTimeout,clearTimeout,queueMicrotask});
  vm.runInContext(await readFile(new URL('../access/client.js',import.meta.url),'utf8'),context);
  await win.DuoAccess?.ready;
- return {win,localStorage,sessionStorage,location,requests};
+ return {win,localStorage,sessionStorage,location,requests,context,document};
 }
 
 test('new guest needs no provider account, URL, PIN or voice ID setup',async()=>{
@@ -285,4 +285,182 @@ test('legacy copy button retains the original room invitation behavior',async()=
  let copied='';
  const {handler}=await copyHandler({}, {clipboard:{writeText:async value=>{copied=value;}}});
  await handler();assert.equal(copied,ACCESS_ORIGIN+'/duotranslate/preview/v2.7/?room=ABCDEFGH');
+});
+
+class Field {
+ value='';textContent='';disabled=false;checked=false;readOnly=false;options=[];events={};
+ classList={toggle(){}};
+ replaceChildren(){this.options=[];this.value='';}
+ append(item){this.options.push(item);}
+ addEventListener(type,callback){this.events[type]=callback;}
+}
+function installFields(c,names) {
+ const fields=Object.fromEntries(names.map(name=>[name,new Field()]));
+ c.document.getElementById=id=>fields[id]||null;c.document.createElement=()=>new Field();
+ c.document.defaultView=c.win;c.context.$=id=>fields[id];
+ return fields;
+}
+async function installEleven(c) {
+ vm.runInContext(await readFile(new URL('../access/eleven-setup.js',import.meta.url),'utf8'),c.context);
+ return c.win.DuoEleven;
+}
+let inlineAst;
+async function inlineNodes() {
+ if(inlineAst)return inlineAst;
+ const html=await readFile(new URL('../preview/v2.10/index.html',import.meta.url),'utf8');
+ const code=[...html.matchAll(/<script\b[^>]*>([\s\S]*?)<\/script>/gi)].map(m=>m[1]).find(v=>v.length>10000);
+ const acorn={};vm.runInNewContext(process.binding('natives')['internal/deps/acorn/acorn/dist/acorn'],{exports:acorn,module:{exports:acorn}});
+ const ast=acorn.parse(code,{ecmaVersion:'latest'}),functions={},handlers={};
+ function walk(node){
+  if(!node||typeof node!=='object')return;
+  if(node.type==='FunctionDeclaration')functions[node.id.name]=code.slice(node.start,node.end);
+  if(node.type==='AssignmentExpression'&&node.left?.type==='MemberExpression'&&node.left.object?.type==='CallExpression'&&node.left.object.callee?.name==='$'&&['onclick','onchange'].includes(node.left.property?.name))
+   handlers[node.left.object.arguments[0]?.value+(node.left.property.name==='onchange'?'.onchange':'')]=code.slice(node.right.start,node.right.end);
+  for(const [key,value] of Object.entries(node))if(key!=='start'&&key!=='end'){
+   if(Array.isArray(value))value.forEach(walk);else if(value&&typeof value==='object')walk(value);
+  }
+ }
+ walk(ast);inlineAst={functions,handlers};return inlineAst;
+}
+async function useFunctions(c,names) {
+ const nodes=await inlineNodes();vm.runInContext(names.map(name=>nodes.functions[name]).join('\n'),c.context);
+}
+
+test('saving Gemini settings activates persistent access without copying a room invitation first',async()=>{
+ const f=fixture(),c=await client(f,ACCESS_ORIGIN+'/duotranslate/preview/v2.10/');
+ const fields=installFields(c,['translationProvider','aiWorkerUrl','aiWorkerPin','aiTestBtn','aiSetupStatus','aiSetupFields']);
+ vm.runInContext(await readFile(new URL('../ai-translation.js',import.meta.url),'utf8'),c.context);
+ fields.translationProvider.value='gemini';fields.aiWorkerPin.value=OWNER_PIN;
+ fields.aiWorkerPin.events.change();await c.win.DuoAccess.configure();
+ assert.equal(c.win.DuoAccess.role,'admin');assert.equal(c.win.DuoAccess.remembered,true);
+ const reopened=await client(f,ACCESS_ORIGIN+'/duotranslate/preview/v2.10/',Object.fromEntries(c.localStorage.values));
+ assert.equal(reopened.win.DuoAccess.role,'admin');
+ assert.equal(reopened.requests.filter(r=>r.url.endsWith('/access/admin/login')).length,0);
+});
+
+test('voice-only developer configuration survives a new tab without reentering the voice code',async()=>{
+ const f=fixture(),c=await client(f,ACCESS_ORIGIN+'/duotranslate/preview/v2.10/');
+ await c.win.DuoAccess.configure({voicePin:VOICE_PIN});
+ const setup=await installEleven(c);setup.selectVoice('fr-FR',selectedVoice);
+ const reopened=await client(f,ACCESS_ORIGIN+'/duotranslate/preview/v2.10/',Object.fromEntries(c.localStorage.values));
+ assert.equal(reopened.sessionStorage.getItem('duotranslate.voice.pin.session'),VOICE_PIN);
+ assert.equal(JSON.parse(reopened.localStorage.getItem('duotranslate.premium.voice.v1')).enabled,true);
+ const next=await installEleven(reopened);
+ await withProviders(async calls=>{assert.equal((await next.loadVoices()).length,1);assert.equal(calls.length,1);});
+ assert.equal(reopened.requests.at(-1).headers.get('X-Duo-Pin'),VOICE_PIN);
+});
+
+test('entering the voice access code remembers it before selecting or saving a voice',async()=>{
+ const f=fixture(),c=await client(f,ACCESS_ORIGIN+'/duotranslate/preview/v2.10/');
+ const fields=installFields(c,['premiumPin','premiumStatus']);fields.premiumPin.value=VOICE_PIN;
+ const nodes=await inlineNodes(),handler=vm.runInContext('('+nodes.handlers['premiumPin.onchange']+')',c.context);
+ await handler();
+ const reopened=await client(f,ACCESS_ORIGIN+'/duotranslate/preview/v2.10/',Object.fromEntries(c.localStorage.values));
+ assert.equal(reopened.sessionStorage.getItem('duotranslate.voice.pin.session'),VOICE_PIN);
+ assert.equal(reopened.requests.filter(r=>r.url.endsWith('/access/admin/login')).length,0);
+});
+
+test('existing codes in the current tab migrate once to remembered access',async()=>{
+ const f=fixture(),c=await client(f,ACCESS_ORIGIN+'/duotranslate/preview/v2.10/',
+  {'duotranslate.access.remember.v1':'0'},null,
+  {'duotranslate.pin.session.v1':OWNER_PIN,'duotranslate.voice.pin.session':VOICE_PIN});
+ assert.equal(c.win.DuoAccess.role,'admin');assert.ok(c.localStorage.getItem('duotranslate.access.session.v1'));
+ const saved=JSON.parse(c.localStorage.getItem('duotranslate.trusted.access.v210'));
+ assert.equal(saved.voice,VOICE_PIN);assert.equal(saved.gemini,OWNER_PIN);
+ c.win.DuoAccess.forget();assert.equal(c.localStorage.getItem('duotranslate.trusted.access.v210'),null);
+ assert.equal(c.localStorage.getItem('duotranslate.access.session.v1'),null);
+});
+
+test('stale browser expiration metadata does not discard a still-valid server session',async()=>{
+ const f=fixture(),{access}=await member(f),copy={...access,expiresAt:1};
+ const c=await client(f,ACCESS_ORIGIN+'/duotranslate/preview/v2.10/',{'duotranslate.access.session.v1':JSON.stringify(copy)});
+ assert.equal(c.win.DuoAccess.role,'member');
+ assert.ok(JSON.parse(c.localStorage.getItem('duotranslate.access.session.v1')).expiresAt>Date.now());
+});
+
+test('saved voice directory stays selectable after revisiting a screen',async()=>{
+ const second='zyxwvutsrqponmlkjihg',f=fixture(),{access}=await member(f);
+ const c=await client(f,ACCESS_ORIGIN+'/duotranslate/preview/v2.10/',{
+  'duotranslate.access.session.v1':JSON.stringify(access),
+  'duotranslate.eleven.voices.v29':JSON.stringify([{id:selectedVoice,name:'First voice'},{id:second,name:'Second voice'}])});
+ installFields(c,[]);const setup=await installEleven(c),select=new Field();
+ setup.render(select,'fr-FR');assert.equal(select.options.length,2);
+ setup.selectVoice('fr-FR',second);setup.render(select,'fr-FR');
+ assert.equal(select.value,second);assert.equal(select.options.length,2);assert.equal(select.disabled,false);
+ const next=await client(f,ACCESS_ORIGIN+'/duotranslate/preview/v2.10/',Object.fromEntries(c.localStorage.values));
+ installFields(next,[]);const reopened=await installEleven(next),picker=new Field();reopened.render(picker,'fr-FR');
+ assert.equal(picker.value,second);assert.equal(picker.options.length,2);
+});
+
+test('default voice covers empty language settings and preserves previously chosen voices',async()=>{
+ const second='zyxwvutsrqponmlkjihg',f=fixture(),{access}=await member(f);
+ const c=await client(f,ACCESS_ORIGIN+'/duotranslate/preview/v2.10/',{
+  'duotranslate.access.session.v1':JSON.stringify(access),
+  'duotranslate.premium.voice.v1':JSON.stringify({voices:{'fr-FR':selectedVoice,'pt-BR':second},enabled:true})});
+ const setup=await installEleven(c);setup.selectVoice('en-US',selectedVoice);
+ const cfg=setup.get();assert.equal(Object.keys(cfg.voices).length,14);
+ assert.equal(cfg.voices['pt-BR'],second);assert.equal(cfg.voices['fr-FR'],selectedVoice);
+ setup.selectVoice('fr-FR',selectedVoice,false);assert.equal(setup.get().enabled,false);
+});
+
+test('concurrent voice controls reuse a single directory request without synthesizing speech',async()=>{
+ const f=fixture(),{access}=await member(f),c=await client(f,ACCESS_ORIGIN+'/duotranslate/preview/v2.10/',{'duotranslate.access.session.v1':JSON.stringify(access)});
+ const setup=await installEleven(c);
+ await withProviders(async calls=>{
+  const values=await Promise.all([setup.loadVoices(),setup.loadVoices(),setup.loadVoices()]);
+  assert.equal(values.length,3);assert.equal(calls.length,1);assert.ok(calls[0].url.includes('/v2/voices'));
+  await setup.loadVoices();assert.equal(calls.length,1);
+ });
+});
+
+test('onboarding dropdown lists ElevenLabs voices even if device speech synthesis is unavailable',async()=>{
+ const f=fixture(),{access}=await member(f),c=await client(f,ACCESS_ORIGIN+'/duotranslate/preview/v2.10/',{
+  'duotranslate.access.session.v1':JSON.stringify(access),
+  'duotranslate.eleven.voices.v29':JSON.stringify([{id:selectedVoice,name:'Selected ElevenLabs voice'}])});
+ const fields=installFields(c,['hear','speak','voicePreview','l_voice','hearVoice','selBadge','nextReal']);
+ fields.hear.value='fr-FR';fields.speak.value='pt-BR';
+ await installEleven(c);
+ c.win.speechSynthesis=new Proxy({}, {get(){throw Error('Device voices must not be requested here');}});
+ Object.assign(c.context,{step:3,locale:()=>['pt-BR','Português','pt'],QUICK_VOICE_LOCALES:{pt:['','Voz natural ElevenLabs'],en:['','ElevenLabs voice']},langs:[['pt-BR','Português'],['fr-FR','Français']]});
+ await useFunctions(c,['populateVoices']);vm.runInContext('populateVoices()',c.context);
+ assert.equal(fields.voicePreview.value,selectedVoice);assert.equal(fields.voicePreview.options[0].textContent,'Selected ElevenLabs voice');
+ assert.equal(fields.hearVoice.disabled,false);assert.ok(fields.l_voice.textContent.includes('ElevenLabs'));
+});
+
+test('initial voice example uses ElevenLabs before the translator iframe exists',async()=>{
+ const f=fixture(),{access}=await member(f),c=await client(f,ACCESS_ORIGIN+'/duotranslate/preview/v2.10/',{'duotranslate.access.session.v1':JSON.stringify(access)});
+ const fields=installFields(c,['voicePreview','nextReal','hearVoice']);fields.voicePreview.value=selectedVoice;
+ let played=0;
+ c.context.Audio=class {play(){played++;queueMicrotask(()=>this.onended());return Promise.resolve();}};
+ vm.runInContext(await readFile(new URL('../preview/engine-v2.7/premium-voice.js',import.meta.url),'utf8'),c.context);
+ await installEleven(c);
+ Object.assign(c.context,{integrateFrameDoc:()=>null,phrases:{'fr-FR':'Bonjour'},quickTestAudioContext:null});
+ await useFunctions(c,['unlockQuickTestAudio','premiumStored','quickVoiceSample']);
+ await withProviders(async calls=>{
+  await vm.runInContext("quickVoiceSample('voicePreview','fr-FR','nextReal','hearVoice')",c.context);
+  assert.equal(calls.length,1);assert.ok(calls[0].url.includes('/text-to-speech/'));
+ });
+ assert.equal(played,1);assert.ok(fields.nextReal.textContent.includes('Amostra reproduzida'));assert.equal(fields.hearVoice.disabled,false);
+});
+
+test('settings button creates an individual invitation without needing a room',async()=>{
+ const f=fixture(),{admin}=await member(f),c=await client(f,ACCESS_ORIGIN+'/duotranslate/preview/v2.10/',{'duotranslate.access.session.v1':JSON.stringify(admin)});
+ const fields=installFields(c,['trustedSave','trustedStatus']);let copied='';
+ c.win.navigator={clipboard:{writeText:async text=>{copied=text;}}};
+ const nodes=await inlineNodes();await useFunctions(c,['updateTrustedMessage']);
+ vm.runInContext('updateTrustedMessage()',c.context);assert.equal(fields.trustedSave.textContent,'Copiar convite individual');
+ const handler=vm.runInContext('('+nodes.handlers.trustedSave+')',c.context);await handler();
+ const url=new URL(copied);assert.equal(url.searchParams.get('room'),null);assert.ok(url.hash.startsWith('#duo-invite='));
+ const receiver=await client(f,copied);assert.equal(receiver.win.DuoAccess.role,'member');
+ assert.equal(fields.trustedSave.disabled,false);
+});
+
+test('active access renews near expiration without permitting a revoked user to renew',async()=>{
+ const f=fixture(),{access,admin}=await member(f);
+ const entry=[...f.storage.data].find(([key,value])=>key.startsWith('session:')&&value.userId===access.user.id);
+ f.storage.data.set(entry[0],{...entry[1],expiresAt:Date.now()+86400000});
+ const response=await aiWorker.fetch(request('/access/session',undefined,auth(access.token)),f.env);
+ assert.equal(response.status,200);assert.ok((await response.json()).expiresAt>Date.now()+29*86400000);
+ assert.equal((await aiWorker.fetch(request('/access/revoke',{userId:access.user.id},auth(admin.token)),f.env)).status,200);
+ assert.equal((await aiWorker.fetch(request('/access/session',undefined,auth(access.token)),f.env)).status,401);
 });

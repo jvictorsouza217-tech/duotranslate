@@ -25,6 +25,7 @@ function save(){
  settings.url=ui.url.value.trim().replace(/\/+$/,'');
  try{localStorage.setItem(CONFIG_KEY,JSON.stringify(settings));}catch(e){}
  try{sessionStorage.setItem(PIN_KEY,ui.pin.value);}catch(e){}
+ if(window.DuoAccess)void window.DuoAccess.configure({geminiPin:ui.pin.value}).catch(()=>{});
  update();
 }
 function update(){
@@ -116,6 +117,13 @@ ui.test.addEventListener('click',async()=>{
  finally{ui.test.disabled=false;}
 });
 window.DuoAI={
+ refreshAccess(){
+  const cfg=(()=>{try{return JSON.parse(localStorage.getItem(CONFIG_KEY)||'{}');}catch(e){return {};}})();
+  if(cfg.url){settings.url=cfg.url;ui.url.value=cfg.url;}
+  const saved=(()=>{try{return sessionStorage.getItem(PIN_KEY)||'';}catch(e){return '';}})();
+  if(saved)ui.pin.value=saved;
+  update();
+ },
  enabled:()=>ui.provider.value==='gemini',
  translate,analyze,
  label:()=>ui.provider.value==='gemini'?'Gemini (IA)':'MyMemory'

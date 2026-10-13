@@ -7,14 +7,16 @@ Backup anterior às alterações: [`backup-v2.10-before-individual-access-202610
 O desenvolvedor mantém suas contas e os Secrets dos dois Workers. Convidados não configuram GitHub, Cloudflare, Gemini, ElevenLabs, endereços ou códigos dos serviços.
 
 1. O administrador abre a prévia 2.10 no navegador onde já configurou o acesso Gemini. O app usa esse código apenas para estabelecer a sessão administrativa. A chave de API permanece no Worker.
-2. Escolhe normalmente idiomas e voz. Na tela de conexão, cria uma sala e usa o botão de convite que já existia.
-3. O convite inclui a sala e uma autorização individual de uso único. Vale 24 horas para ativação; a sessão ativada vale 30 dias.
+2. Escolhe normalmente idiomas e voz. Em **Configurações → Vozes → Copiar convite individual**, copia um convite de acesso sem precisar criar uma sala. Na tela de conexão, o botão existente também copia um convite com a sala.
+3. O convite inclui uma autorização individual de uso único. Vale 24 horas para ativação; a sessão ativada vale 30 dias e é renovada ao usar o app nos últimos sete dias desse prazo. A revogação continua sendo verificada no servidor.
 4. O convidado abre o link, conclui as telas iniciais existentes e usa os mesmos recursos de tradução e conversa. Os serviços vêm configurados e as vozes inicialmente selecionadas pelo administrador são herdadas. O convidado pode escolher outra voz normalmente.
-5. Depois da primeira abertura, a sessão é lembrada naquele navegador. O controle existente para esquecer remove a lembrança permanente sem interromper a sessão da aba.
+5. Depois da primeira abertura, a sessão é lembrada naquele navegador. Ao preencher os códigos de desenvolvedor nas telas existentes, eles também são lembrados automaticamente no próprio aparelho, e o código Gemini estabelece a sessão administrativa sem depender de criar uma sala ou copiar um convite. O controle existente para esquecer remove a lembrança permanente sem interromper a sessão da aba.
+
+A configuração inicial e os seletores rápidos usam a mesma lista ElevenLabs, guardada no navegador. A voz escolhida fica salva; idiomas que ainda não tinham uma voz usam essa escolha como padrão. As escolhas anteriores de outros idiomas são preservadas. Não é preciso pressionar “Usar esta voz” novamente ao reabrir a tela. Os testes de exemplo funcionam também antes de o iframe do tradutor carregar.
 
 Quem já tem uma sessão de convidado pode copiar o link da sala para outro usuário já autorizado. Convidados não podem criar novas autorizações. Fechar uma sala não revoga a autorização individual.
 
-O layout, HTML visual e CSS das duas telas permanecem iguais. Só o acesso, a entrega do convite e a configuração automática foram integrados. Não mudam tradução, reprodução, microfone, idiomas, histórico ou limites já configurados.
+O layout, HTML visual e CSS das duas telas permanecem iguais. Os controles existentes de voz e acesso foram ligados à configuração automática, e o botão de lembrança do administrador agora copia o convite individual. Não mudam tradução, microfone, idiomas, histórico ou limites já configurados. A prévia de voz inicial passa a usar ElevenLabs; a reprodução na conversa permanece no mesmo módulo.
 
 ## Implantação pelo desenvolvedor
 

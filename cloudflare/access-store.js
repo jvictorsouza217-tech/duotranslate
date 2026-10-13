@@ -89,6 +89,10 @@ export class DuoAccessStore {
    }
    const current=await this.session(storage,token);
    if(!current)return accessJson({error:'Seu acesso expirou ou foi revogado. Peça um novo convite.'},401);
+   if(['/session','/check'].includes(path) && current.expiresAt-Date.now()<7*DAY){
+    current.expiresAt=Date.now()+30*DAY;
+    await storage.put('session:'+await digest(token),{userId:current.user.id,expiresAt:current.expiresAt});
+   }
    if(path==='/session' && request.method==='GET') {
     return accessJson({expiresAt:current.expiresAt,user:publicUser(current.user),services:ACCESS_SERVICES,preferences:current.user.preferences});
    }

@@ -397,7 +397,7 @@ body[data-duo-int-view="listening"] #intOnePhoneOptions .int-actions{display:non
   </div>
 </section>
 
-<script src="../../access/client.js?v=1"></script>
+<script src="../../access/client.js?v=2"></script><script src="../engine-v2.7/premium-voice.js?v=2.7-access-2"></script><script src="../../access/eleven-setup.js?v=1"></script>
 <script>
 (async()=>{'use strict';
 await window.DuoAccess?.ready;
@@ -535,7 +535,7 @@ const tests=[{pt:'Voz normal, próximo ao celular',en:'Normal voice, near the ph
  }
  function show(n){step=n;document.body.classList.toggle('gate-active',n===0);
   for(let i=0;i<=3;i++){$('page'+i).classList.toggle('hide',i!==n);$('dot'+i).classList.toggle('on',i<=n);}
-  if(n===0)renderGate();else localUi();if(n===2)renderSubstep();window.scrollTo({top:0,behavior:'smooth'});
+  if(n===0)renderGate();else localUi();if(n===2)renderSubstep();if(n===3)populateVoices();window.scrollTo({top:0,behavior:'smooth'});
  }
  function save(){profile.ui=$('uiLang').value||profile.ui;profile.name=$('gateName').value.trim();profile.speak=$('speak').value;profile.hear=$('hear').value;profile.microphoneProfiles=deviceState.profiles.slice(-25);profile.mic=results.map(({position,rms,clipping,success})=>({position,rms,clipping,success}));try{localStorage.setItem('duotranslate-concept-profile',JSON.stringify(profile))}catch(e){}}
  function renderTest(){let tr=words(),l=locale()[2],t=tests[Math.min(index,tests.length-1)],done=index>=tests.length;
@@ -574,13 +574,14 @@ function voiceKey(v){return v.voiceURI+'|'+v.name+'|'+v.lang}
 function voiceSettings(){try{return JSON.parse(localStorage.getItem('duotranslate.voice.v1')||'{}')}catch(e){return {}}}
 function saveVoiceSettings(lang,key,rate){const cfg=voiceSettings();cfg.voices=cfg.voices||{};if(lang)cfg.voices[lang]=key||'';if(Number.isFinite(rate))cfg.rate=rate;localStorage.setItem('duotranslate.voice.v1',JSON.stringify(cfg));const doc=integrateFrameDoc();if(doc){if(lang){const l=doc.getElementById('voiceOtherLang'),v=doc.getElementById('voiceOther');if(l){l.value=lang;l.dispatchEvent(new doc.defaultView.Event('change'))}if(v){v.value=key||'';v.dispatchEvent(new doc.defaultView.Event('change'))}}if(Number.isFinite(rate)){const r=doc.getElementById('voiceRate');if(r){r.value=String(rate);r.dispatchEvent(new doc.defaultView.Event('input'))}}}}
 function populateVoices(){
- const lang=$('hear').value,matched=voices().filter(v=>String(v.lang||'').toLowerCase().replace('_','-').startsWith(lang.slice(0,2).toLowerCase()));
- const saved=voiceSettings().voices?.[lang]||'';
- const el=$('voicePreview');el.replaceChildren();
- const automatic=document.createElement('option');automatic.value='';automatic.textContent='Automática (voz do aparelho)';el.append(automatic);
- matched.forEach(v=>{const opt=document.createElement('option');opt.value=voiceKey(v);opt.textContent=v.name+' ('+v.lang+')';el.append(opt)});
- el.value=matched.some(v=>voiceKey(v)===saved)?saved:'';
+ const lang=$('hear').value,data=window.DuoEleven.render($('voicePreview'),lang);
+ $('l_voice').textContent=(QUICK_VOICE_LOCALES[locale()[2]]||QUICK_VOICE_LOCALES.en)[1];
+ $('hearVoice').disabled=!data.selected;
  $('selBadge').textContent=(langs.find(x=>x[0]===$('speak').value)?.[1]||'')+' → '+(langs.find(x=>x[0]===$('hear').value)?.[1]||'');
+ if(step===3&&!window.DuoEleven.directory().length&&window.DuoEleven.available()){
+  window.DuoEleven.loadVoices().then(()=>{if(step===3&&$('hear').value===lang)populateVoices();})
+   .catch(e=>{$('nextReal').textContent=String(e.message||e);});
+ }
 }
 $('uiLang').addEventListener('change',()=>{if(!$('uiLang').value)return;
  $('speak').value=$('uiLang').value;
@@ -597,8 +598,8 @@ $('next2').onclick=()=>{if(isRecording)return;
 $('micStart').onclick=doTest;
 $('skipTest').onclick=()=>{if(index>=4)return;results.push({position:index,success:false,rms:0,clipping:0});index++;renderTest();save();renderSubstep()};
 $('speak').onchange=()=>{save();populateVoices()};$('hear').onchange=()=>{save();populateVoices()};$('gateName').addEventListener('input',()=>{renderGate();save()});
-$('voicePreview').onchange=()=>saveVoiceSettings($('hear').value,$('voicePreview').value);
-$('hearVoice').onclick=()=>{if(!window.speechSynthesis){$('nextReal').textContent='Este navegador não disponibiliza voz.';return;}const lang=$('hear').value,u=new SpeechSynthesisUtterance(phrases[lang]||phrases['pt-BR']);u.lang=lang;const v=voices().find(v=>voiceKey(v)===$('voicePreview').value);if(v)u.voice=v;window.speechSynthesis.cancel();window.speechSynthesis.speak(u)};
+$('voicePreview').onchange=()=>{window.DuoEleven.selectVoice($('hear').value,$('voicePreview').value);save();};
+$('hearVoice').onclick=()=>quickVoiceSample('voicePreview',$('hear').value,'nextReal','hearVoice');
 
 
 // Integration 2.5: routing and presentation only; Beta 1.7 JS remains unchanged.
@@ -673,7 +674,7 @@ zh:{welcome:'从这里开始对话',home:'开始交谈吧。',homeDesc:'自然�
 const MODES={"pt":["Como deseja traduzir?","Escolha o modo para cada situação. Você pode mudar quando quiser.","Conversação","Duas pessoas conversando presencialmente.","Com celulares conectados","Cada pessoa usa seu próprio celular com DuoTranslate, pela internet. Fones opcionais; não é conexão Bluetooth entre celulares.","Disponível · exige código inicialmente","Sem conectar os celulares","Use apenas um celular e o aplicativo, com ou sem fones. Inverta os idiomas para responder.","Em testes · troca manual","Escutar e traduzir","Um celular e o aplicativo, com ou sem fones. Ouça traduções de aulas, filmes ou palestras sem responder.","Em testes · captação por microfone","Laboratório de tradução","Conversação sem conectar celulares","Um único celular. Para responder, alterne os idiomas manualmente: ainda não distingue automaticamente os dois falantes.","Escutar e traduzir","O aplicativo traduz áudio captado pelo microfone. Não captura automaticamente o som interno de um vídeo no mesmo celular.","Idioma que o microfone escuta","Idioma que desejo ouvir","Este modo usa a tradução e o reconhecimento reais do teste individual. Não identifica automaticamente quem fala. Fones podem mudar o microfone utilizado.","⇄ Inverter idiomas","Aplicar idiomas","Idiomas aplicados. Ative o microfone abaixo.","Escolha idiomas diferentes."],"en":["How would you like to translate?","Choose the best mode for each situation. You can change later.","Conversation","Two people talking face to face.","With connected phones","Each person uses their own phone with DuoTranslate over the internet. Earbuds optional; phones do not pair via Bluetooth.","Available · room code required initially","Without connecting phones","One phone and the app, with or without earbuds. Swap languages to reply.","Experimental · manual switching","Listen and translate","Just your phone and app, with or without earbuds. Hear translations of classes, films and talks without replying.","Experimental · microphone capture","Translation lab","Unconnected conversation","One phone only. Swap languages manually to reply; automatic speaker recognition is not available.","Listen and translate","Speech is captured by the microphone. Video audio playing on this same phone is not captured internally.","Language heard by the microphone","Translation language","This uses real individual speech recognition and translation; it does not automatically identify the speaker. Earbuds can change microphone input.","⇄ Swap languages","Apply languages","Languages applied. Start the microphone below.","Choose different languages."],"fr":["Comment souhaitez-vous traduire ?","Choisissez un mode selon la situation. Vous pourrez changer plus tard.","Conversation","Deux personnes discutent face à face.","Avec téléphones connectés","Chaque personne utilise son téléphone et DuoTranslate via Internet. Écouteurs facultatifs ; pas de connexion Bluetooth entre les téléphones.","Disponible · code de salon au départ","Sans connecter les téléphones","Un téléphone et l’application, avec ou sans écouteurs. Inversez les langues pour répondre.","Expérimental · changement manuel","Écouter et traduire","Un téléphone et l’application, avec ou sans écouteurs. Comprenez un cours ou une conférence sans répondre.","Expérimental · microphone","Laboratoire de traduction","Conversation sans connexion","Un seul téléphone : inversez manuellement les langues pour répondre. L’identification du locuteur n’est pas disponible.","Écouter et traduire","Le microphone capte la voix. Le son d’une vidéo sur ce téléphone n’est pas capté automatiquement.","Langue entendue par le microphone","Langue de traduction","Ce mode utilise la reconnaissance et la traduction existantes, sans identifier automatiquement les locuteurs.","⇄ Inverser les langues","Appliquer les langues","Langues appliquées. Activez le micro ci-dessous.","Choisissez deux langues différentes."],"es":["¿Cómo deseas traducir?","Elige un modo para cada ocasión. Puedes cambiarlo después.","Conversación","Dos personas conversando cara a cara.","Con teléfonos conectados","Cada persona usa su móvil con DuoTranslate por Internet. Auriculares opcionales; no se conectan por Bluetooth.","Disponible · código de sala inicial","Sin conectar los teléfonos","Un teléfono y la app, con o sin auriculares. Invierte los idiomas para responder.","Experimental · cambio manual","Escuchar y traducir","Solo el móvil y la app, con o sin auriculares. Entiende clases y charlas sin responder.","Experimental · micrófono","Laboratorio de traducción","Conversación sin conexión","Un móvil. Invierte manualmente los idiomas para responder; aún no identifica a los hablantes.","Escuchar y traducir","Se capta la voz con el micrófono, no el audio interno del mismo teléfono.","Idioma que escucha el micrófono","Idioma de traducción","Usa el traductor individual real, pero aún no identifica automáticamente al hablante.","⇄ Invertir idiomas","Aplicar idiomas","Idiomas aplicados. Activa el micrófono abajo.","Elige idiomas diferentes."],"it":["Come vuoi tradurre?","Scegli il modo più adatto. Puoi cambiarlo in seguito.","Conversazione","Due persone che parlano faccia a faccia.","Con telefoni collegati","Ognuno usa DuoTranslate sul proprio telefono tramite Internet. Auricolari facoltativi; i telefoni non si collegano via Bluetooth.","Disponibile · codice stanza iniziale","Senza collegare i telefoni","Un telefono e l'app, con o senza auricolari. Inverti le lingue per rispondere.","Sperimentale · cambio manuale","Ascolta e traduci","Un telefono e l'app, con o senza auricolari. Comprendi lezioni e discorsi senza rispondere.","Sperimentale · microfono","Laboratorio di traduzione","Conversazione senza collegamento","Usa un solo telefono. Inverti manualmente le lingue per rispondere; non identifica automaticamente chi parla.","Ascolta e traduci","Il microfono registra la voce nell'ambiente. Non cattura automaticamente l'audio interno di questo telefono.","Lingua ascoltata dal microfono","Lingua della traduzione","Usa riconoscimento e traduzione reali, ma non riconosce automaticamente chi parla. Gli auricolari possono cambiare il microfono.","⇄ Inverti lingue","Applica lingue","Lingue applicate. Attiva il microfono qui sotto.","Scegli lingue diverse."],"de":["Wie möchtest du übersetzen?","Wähle den passenden Modus. Du kannst ihn später ändern.","Gespräch","Zwei Personen sprechen direkt miteinander.","Mit verbundenen Handys","Beide nutzen DuoTranslate auf ihrem eigenen Handy über das Internet. Kopfhörer optional; keine Bluetooth-Kopplung der Handys.","Verfügbar · zunächst Raumcode nötig","Ohne Handys zu verbinden","Ein Handy mit App, mit oder ohne Kopfhörer. Zum Antworten Sprachen manuell tauschen.","Experimentell · manueller Wechsel","Zuhören und übersetzen","Nur Handy und App, mit oder ohne Kopfhörer. Unterricht oder Vorträge verstehen, ohne zu antworten.","Experimentell · Mikrofon","Übersetzungslabor","Gespräch ohne Verbindung","Ein Handy. Zum Antworten die Sprachen manuell tauschen; Sprecher werden nicht automatisch erkannt.","Zuhören und übersetzen","Die Stimme wird über das Mikrofon aufgenommen. Internes Video-Audio auf diesem Handy wird nicht automatisch erfasst.","Vom Mikrofon gehörte Sprache","Sprache der Übersetzung","Verwendet echte Spracherkennung und Übersetzung, aber keine automatische Sprechererkennung. Kopfhörer können die Mikrofonquelle ändern.","⇄ Sprachen tauschen","Sprachen anwenden","Sprachen eingestellt. Unten Mikrofon starten.","Bitte unterschiedliche Sprachen wählen."],"nl":["Hoe wil je vertalen?","Kies de juiste modus. Je kunt dit later veranderen.","Gesprek","Twee personen praten met elkaar, ter plaatse.","Met verbonden telefoons","Iedereen gebruikt DuoTranslate op de eigen telefoon via internet. Oordopjes optioneel; telefoons worden niet via Bluetooth gekoppeld.","Beschikbaar · eerst een kamercode","Zonder telefoons te verbinden","Eén telefoon en de app, met of zonder oordopjes. Wissel talen om te antwoorden.","Experimenteel · handmatig wisselen","Luisteren en vertalen","Alleen een telefoon en de app, met of zonder oordopjes. Begrijp lessen of lezingen zonder te antwoorden.","Experimenteel · microfoon","Vertaaltest","Gesprek zonder verbinding","Gebruik één telefoon. Wissel talen handmatig om te antwoorden; automatische sprekerherkenning ontbreekt.","Luisteren en vertalen","De microfoon vangt spraak op. Intern geluid van video's op deze telefoon wordt niet automatisch opgenomen.","Taal die de microfoon hoort","Taal van de vertaling","Gebruikt echte spraakherkenning en vertaling, maar herkent de spreker niet automatisch. Oordopjes kunnen de microfoon wijzigen.","⇄ Talen omwisselen","Talen toepassen","Talen ingesteld. Start de microfoon hieronder.","Kies verschillende talen."],"pl":["Jak chcesz tłumaczyć?","Wybierz odpowiedni tryb. Możesz go później zmienić.","Rozmowa","Dwie osoby rozmawiają twarzą w twarz.","Z połączonymi telefonami","Każda osoba korzysta z DuoTranslate na swoim telefonie przez internet. Słuchawki opcjonalne; telefonów nie łączy się przez Bluetooth.","Dostępne · na razie kod pokoju","Bez łączenia telefonów","Jeden telefon i aplikacja, ze słuchawkami lub bez. Zamień języki, aby odpowiedzieć.","Eksperymentalne · zmiana ręczna","Słuchaj i tłumacz","Tylko telefon i aplikacja, ze słuchawkami lub bez. Rozumiej wykłady bez odpowiadania.","Eksperymentalne · mikrofon","Test tłumaczenia","Rozmowa bez połączenia","Użyj jednego telefonu. Ręcznie zamieniaj języki, aby odpowiadać; nie rozpoznaje automatycznie rozmówców.","Słuchaj i tłumacz","Mikrofon rejestruje mowę z otoczenia. Dźwięk wideo odtwarzanego na tym telefonie nie jest przechwytywany.","Język słyszany przez mikrofon","Język tłumaczenia","Używa rzeczywistego rozpoznawania mowy i tłumaczenia, ale nie identyfikuje automatycznie mówiącego. Słuchawki mogą zmienić mikrofon.","⇄ Zamień języki","Zastosuj języki","Języki ustawione. Włącz mikrofon poniżej.","Wybierz różne języki."],"ro":["Cum vrei să traduci?","Alege modul potrivit. Îl poți schimba mai târziu.","Conversație","Două persoane vorbesc față în față.","Cu telefoanele conectate","Fiecare folosește DuoTranslate pe telefonul propriu prin internet. Căștile sunt opționale; telefoanele nu se conectează prin Bluetooth.","Disponibil · deocamdată cod de cameră","Fără conectarea telefoanelor","Un telefon și aplicația, cu sau fără căști. Inversează limbile pentru a răspunde.","Experimental · schimbare manuală","Ascultă și traduce","Doar telefonul și aplicația, cu sau fără căști. Înțelege cursuri sau prezentări fără să răspunzi.","Experimental · microfon","Laborator de traducere","Conversație fără conexiune","Folosește un singur telefon. Inversează manual limbile pentru a răspunde; nu recunoaște automat vorbitorii.","Ascultă și traduce","Microfonul captează vorbirea. Sunetul intern al videoclipurilor de pe acest telefon nu este captat automat.","Limba auzită de microfon","Limba traducerii","Folosește recunoaștere vocală și traducere reale, dar nu identifică automat vorbitorul. Căștile pot schimba microfonul.","⇄ Inversează limbile","Aplică limbile","Limbile au fost aplicate. Pornește microfonul mai jos.","Alege limbi diferite."],"uk":["Як бажаєте перекладати?","Оберіть потрібний режим. Його можна змінити пізніше.","Розмова","Двоє людей розмовляють наживо.","З підключеними телефонами","Кожен використовує DuoTranslate на власному телефоні через інтернет. Навушники необов’язкові; телефони не з’єднуються через Bluetooth.","Доступно · поки потрібен код кімнати","Без з’єднання телефонів","Один телефон і застосунок, з навушниками або без. Міняйте мови місцями, щоб відповісти.","Експериментально · перемикання вручну","Слухати й перекладати","Лише телефон і застосунок, з навушниками або без. Розумійте лекції без потреби відповідати.","Експериментально · мікрофон","Тестування перекладу","Розмова без підключення","Використовуйте один телефон. Для відповіді міняйте мови вручну; автоматичного визначення мовця ще немає.","Слухати й перекладати","Мікрофон вловлює голос. Внутрішній звук відео на цьому телефоні автоматично не захоплюється.","Мова, яку чує мікрофон","Мова перекладу","Це справжнє розпізнавання мовлення і переклад, але без автоматичного визначення мовця. Навушники можуть змінювати мікрофон.","⇄ Поміняти мови","Застосувати мови","Мови налаштовано. Увімкніть мікрофон нижче.","Оберіть різні мови."],"ru":["Как вы хотите переводить?","Выберите подходящий режим. Его можно изменить позже.","Разговор","Два человека разговаривают лично.","С подключёнными телефонами","Каждый использует DuoTranslate на своём телефоне через интернет. Наушники необязательны; телефоны не соединяются по Bluetooth.","Доступно · пока нужен код комнаты","Без соединения телефонов","Один телефон с приложением, с наушниками или без. Меняйте языки, чтобы ответить.","Экспериментально · ручное переключение","Слушать и переводить","Только телефон и приложение, с наушниками или без. Понимайте лекции и выступления без ответа.","Экспериментально · микрофон","Проверка перевода","Разговор без подключения","Один телефон. Чтобы ответить, меняйте языки вручную; автоматического распознавания собеседников пока нет.","Слушать и переводить","Микрофон захватывает речь. Внутреннее аудио видео на этом телефоне автоматически не захватывается.","Язык, который слышит микрофон","Язык перевода","Используются реальные распознавание речи и перевод, но говорящий автоматически не определяется. Наушники могут менять микрофон.","⇄ Поменять языки","Применить языки","Языки установлены. Включите микрофон ниже.","Выберите разные языки."],"tr":["Nasıl çeviri yapmak istersiniz?","Durumunuza uygun modu seçin. Sonra değiştirebilirsiniz.","Konuşma","İki kişinin yüz yüze konuşması.","Bağlı telefonlarla","Herkes DuoTranslate'i kendi telefonunda internet üzerinden kullanır. Kulaklık isteğe bağlıdır; telefonlar Bluetooth ile eşleşmez.","Kullanılabilir · şimdilik oda kodu gerekir","Telefonları bağlamadan","Tek telefon ve uygulama, kulaklıklı veya kulaklıksız. Yanıt vermek için dilleri elle değiştirin.","Deneysel · elle değiştirme","Dinle ve çevir","Yalnızca telefon ve uygulama, kulaklık olsun ya da olmasın. Dersleri ve konuşmaları yanıt vermeden anlayın.","Deneysel · mikrofon","Çeviri testi","Bağlantısız konuşma","Tek telefon kullanın. Yanıt vermek için dilleri elle değiştirin; konuşmacı otomatik olarak tanınmaz.","Dinle ve çevir","Mikrofon konuşmayı yakalar. Aynı telefonda oynatılan videonun dahili sesi otomatik alınmaz.","Mikrofonun duyduğu dil","Çeviri dili","Gerçek konuşma tanıma ve çeviri kullanılır, ancak konuşmacı otomatik tanınmaz. Kulaklık mikrofon kaynağını değiştirebilir.","⇄ Dilleri değiştir","Dilleri uygula","Diller ayarlandı. Aşağıdan mikrofonu açın.","Farklı diller seçin."],"ar":["كيف تريد الترجمة؟","اختر الوضع المناسب، ويمكنك تغييره لاحقاً.","محادثة","شخصان يتحدثان وجهاً لوجه.","مع هاتفين متصلين","يستخدم كل شخص DuoTranslate على هاتفه عبر الإنترنت. السماعات اختيارية، ولا يتم ربط الهاتفين عبر Bluetooth.","متاح · يتطلب رمز غرفة حالياً","دون ربط الهاتفين","هاتف واحد والتطبيق، مع سماعات أو بدونها. بدّل اللغتين يدوياً للرد.","تجريبي · تبديل يدوي","استمع وترجم","هاتف واحد والتطبيق، مع سماعات أو بدونها. افهم الدروس أو المحاضرات دون الحاجة للرد.","تجريبي · ميكروفون","اختبار الترجمة","محادثة دون اتصال بين الهاتفين","استخدم هاتفاً واحداً. بدّل اللغات يدوياً للرد؛ لم يتم تفعيل تحديد المتحدث تلقائياً.","استمع وترجم","يلتقط الميكروفون الكلام. لا يتم التقاط الصوت الداخلي لفيديو يعمل على الهاتف نفسه تلقائياً.","اللغة التي يسمعها الميكروفون","لغة الترجمة","يستخدم التعرّف على الكلام والترجمة الفعليين، لكنه لا يحدد المتحدث تلقائياً. قد تغير السماعات مصدر الميكروفون.","⇄ تبديل اللغات","تطبيق اللغات","تم تطبيق اللغات. فعّل الميكروفون أدناه.","اختر لغتين مختلفتين."],"zh":["你想怎样翻译？","选择适合当前情况的模式，之后可以更改。","对话","两个人面对面交谈。","两部手机互联","双方各自在手机上通过互联网使用 DuoTranslate。耳机可选；手机之间不是通过蓝牙配对。","可测试 · 目前需要房间代码","不连接两部手机","只用一部手机和应用，有无耳机均可。需要回复时手动交换语言。","实验模式 · 手动切换","聆听并翻译","只需一部手机和应用，有无耳机均可。无需回应，也能听懂课程或讲座。","实验模式 · 麦克风","翻译测试","无需互联的对话","使用一部手机。要回复时需手动交换语言；尚不能自动识别讲话人。","聆听并翻译","使用麦克风捕捉语音。不会自动捕获此手机播放视频的内部音频。","麦克风听到的语言","译文语言","使用真实的语音识别与翻译，但不会自动识别讲话人。耳机可能改变麦克风输入。","⇄ 交换语言","应用语言","语言已设置。请点击下方按钮启动麦克风。","请选择不同的语言。"]};function mInt(){return MODES[(intState.data?.ui||'en-US').split('-')[0]]||MODES.en;}
 function tInt(){return INT_COPY[`${intState.data?.ui||'pt-BR'}`.split('-')[0]]||INT_COPY.en;}
 function persistedIntegration(){try{const d=JSON.parse(localStorage.getItem(INTEGRATION_KEY)||'null');return d&&typeof d==='object'&&d.complete===true?d:null;}catch(e){return null;}}
-function persistIntegratedConfig(){save();const data={complete:true,ui:$('uiLang').value||profile.ui||'pt-BR',name:$('gateName').value.trim()||profile.name||'',speak:$('speak').value||'pt-BR',hear:$('hear').value||'fr-FR',voiceURI:$('voicePreview').value||'',updated:new Date().toISOString()};localStorage.setItem(INTEGRATION_KEY,JSON.stringify(data));localStorage.setItem('duotranslate.interface.language',data.ui.split('-')[0]);return data;}
+function persistIntegratedConfig(){save();const data={complete:true,ui:$('uiLang').value||profile.ui||'pt-BR',name:$('gateName').value.trim()||profile.name||'',speak:$('speak').value||'pt-BR',hear:$('hear').value||'fr-FR',voiceURI:voiceSettings().voices?.[$('hear').value]||'',updated:new Date().toISOString()};localStorage.setItem(INTEGRATION_KEY,JSON.stringify(data));localStorage.setItem('duotranslate.interface.language',data.ui.split('-')[0]);return data;}
 function integrateFrameDoc(){try{const f=$('duoRealFrame'),doc=f.contentDocument;return doc?.getElementById('soloSource')?doc:null;}catch(e){return null;}}
 function selectBeta(id,value){const doc=integrateFrameDoc();const el=doc?.getElementById(id);if(!el||!Array.from(el.options||[]).some(o=>o.value===value))return false;if(el.value===value)return true;el.value=value;el.dispatchEvent(new fEvent('change',{bubbles:true}));return true;}
 // Do not rely on a window constructor from a third-party frame.
@@ -719,9 +720,11 @@ function savePremium(){
  const cfg=premiumStored();cfg.voices=cfg.voices||{};cfg.voices[lang]=id;cfg.url=url;cfg.enabled=$('premiumEnable').checked;
  localStorage.setItem('duotranslate.premium.voice.v1',JSON.stringify(cfg));
  sessionStorage.setItem('duotranslate.voice.pin.session',pin);
+ void window.DuoAccess.configure({voicePin:pin}).catch(()=>{});
+ window.DuoEleven.selectVoice(lang,id,cfg.enabled);
  const doc=integrateFrameDoc();
- if(doc&&doc.defaultView&&doc.defaultView.DuoPremiumVoice)doc.defaultView.DuoPremiumVoice.configure({enabled:cfg.enabled,url:cfg.url,voices:cfg.voices,pin:pin});
- $('premiumStatus').textContent=cfg.enabled?'Configuração salva. Faça um teste para confirmar.':'Configuração salva, com voz do aparelho ainda como padrão.';
+ if(doc&&doc.defaultView&&doc.defaultView.DuoPremiumVoice)doc.defaultView.DuoPremiumVoice.configure({...window.DuoEleven.get(),pin});
+ $('premiumStatus').textContent=cfg.enabled?'Voz salva. Seu acesso será lembrado neste aparelho.':'Configuração salva com ElevenLabs desativada.';
  return true;
 }
 async function browsePremiumVoices(){
@@ -733,27 +736,23 @@ async function browsePremiumVoices(){
  const cfg=premiumStored();cfg.url=url;cfg.voices=cfg.voices||{};
  localStorage.setItem('duotranslate.premium.voice.v1',JSON.stringify(cfg));
  sessionStorage.setItem('duotranslate.voice.pin.session',pin);
- const doc=integrateFrameDoc(),api=doc?.defaultView?.DuoPremiumVoice;
+ void window.DuoAccess.configure({voicePin:pin}).catch(()=>{});
+ const doc=integrateFrameDoc(),api=doc?.defaultView?.DuoPremiumVoice||window.DuoPremiumVoice;
  if(api)api.configure({...cfg,pin});
  if(!api){$('premiumStatus').textContent='Aguarde o tradutor carregar.';return}
- $('premiumStatus').textContent='Consultando as vozes da sua conta (requer acesso à API)...';
+ $('premiumStatus').textContent='Carregando as vozes disponíveis no DuoTranslate...';
  try{
-  const choices=await api.voices();
+  const choices=await window.DuoEleven.loadVoices(true);
   const list=$('premiumVoiceList');list.replaceChildren();
   choices.forEach(v=>{const opt=document.createElement('option');opt.value=v.id;opt.textContent=v.name;list.append(opt)});
   $('premiumVoiceResults').classList.toggle('integration-hidden',!choices.length);
-  $('premiumStatus').textContent=choices.length?choices.length+' voz(es) disponíveis. Selecione uma e clique em Salvar.':'Nenhuma voz disponível pela API. Confira as permissões da sua conta ElevenLabs.';
+  $('premiumStatus').textContent=choices.length?choices.length+' voz(es) disponíveis. Ao selecionar, sua escolha fica salva.':'O serviço ainda não disponibilizou vozes. Tente carregar novamente.';
  }catch(e){$('premiumStatus').textContent='Não foi possível consultar vozes: '+String(e.message||e)}
 }
 async function testPremiumVoice(){
  if(!savePremium())return;
- // Teste acionado explicitamente pelo usuário.
- const doc=integrateFrameDoc(),mod=doc&&doc.defaultView&&doc.defaultView.DuoPremiumVoice;
- if(!mod){$('premiumStatus').textContent='O tradutor ainda está carregando.';return}
- if(!mod.enabled($('premiumLanguage').value)){$('premiumStatus').textContent='Ative a voz ElevenLabs antes do teste.';return}
- $('premiumStatus').textContent='Buscando voz na ElevenLabs...';
- try{await mod.speak(doc.defaultView.DuoLanguages?.[$('premiumLanguage').value]?.sample||'Hello, how are you?', $('premiumLanguage').value);$('premiumStatus').textContent='Teste finalizado. Confira a reprodução no seu fone.'}
- catch(err){$('premiumStatus').textContent='Erro: '+String(err.message||err)+'. Use a voz do aparelho enquanto isso.'}
+ if(!$('premiumEnable').checked){$('premiumStatus').textContent='Ative a voz ElevenLabs antes do teste.';return;}
+ return quickVoiceSample('premiumVoiceId',$('premiumLanguage').value,'premiumStatus','premiumTest');
 }
 function renderPhrasePanel(){
  const on=localStorage.getItem('duotranslate.phrasebook.enabled.v1')==='1';
@@ -798,22 +797,23 @@ function quickVoiceDirectory(){
 }
 function refreshQuickVoice(){
  localizeQuickVoice();
- const lang=quickVoiceTarget()||'fr-FR',cfg=premiumStored(),chosen=cfg.voices?.[lang]||'',dir=quickVoiceDirectory();
+ const lang=quickVoiceTarget()||'fr-FR',data=window.DuoEleven.render($('quickPremiumVoiceSelect'),lang),cfg=premiumStored(),chosen=data.selected;
  $('quickVoiceLang').textContent=langs.find(v=>v[0]===lang)?.[1]||lang;
- const select=$('quickPremiumVoiceSelect');select.replaceChildren();
- const placeholder=document.createElement('option');placeholder.value='';placeholder.textContent='Selecione uma voz';select.append(placeholder);
- if(chosen){const o=document.createElement('option');o.value=chosen;o.textContent=dir.find(x=>x.id===chosen)?.name||'Voz ElevenLabs configurada';select.append(o);select.value=chosen;}
  const pin=!!sessionStorage.getItem('duotranslate.voice.pin.session');
- $('quickVoiceHelp').textContent=cfg.enabled&&chosen&&pin?'Voz configurada. Pronto para começar a ouvir.':!cfg.url||!pin?'Para ativar a voz, abra Configurações → Vozes e informe os dados do Worker.':'Escolha uma voz ElevenLabs para este idioma.';
+ $('quickVoiceHelp').textContent=cfg.enabled&&chosen&&pin?'Voz configurada. Pronto para começar a ouvir.':!cfg.url||!pin?'Ative seu acesso uma vez em Configurações → Vozes ou abra seu convite individual.':'Escolha uma voz ElevenLabs para este idioma.';
+ if(!window.DuoEleven.directory().length&&window.DuoEleven.available()){
+  window.DuoEleven.loadVoices().then(()=>{if(quickVoiceTarget()===lang)refreshQuickVoice();})
+   .catch(e=>{$('quickVoiceHelp').textContent=String(e.message||e);});
+ }
 }
 async function quickVoiceBrowse(){
- const cfg=premiumStored(),pin=sessionStorage.getItem('duotranslate.voice.pin.session')||'',api=integrateFrameDoc()?.defaultView?.DuoPremiumVoice;
+ const cfg=premiumStored(),pin=sessionStorage.getItem('duotranslate.voice.pin.session')||'',api=integrateFrameDoc()?.defaultView?.DuoPremiumVoice||window.DuoPremiumVoice;
  if(!cfg.url||!pin){$('quickVoiceHelp').textContent='Confira o Worker e o código de acesso em Configurações → Vozes.';return;}
  if(!api){$('quickVoiceHelp').textContent='Aguarde o tradutor carregar.';return;}
  $('quickVoiceHelp').textContent='Buscando vozes na ElevenLabs...';
  try{
   api.configure({...cfg,pin});
-  const voices=await api.voices(),list=$('quickPremiumVoiceSelect'),chosen=cfg.voices?.[quickVoiceTarget()]||'';
+  const voices=await window.DuoEleven.loadVoices(true),list=$('quickPremiumVoiceSelect'),chosen=cfg.voices?.[quickVoiceTarget()]||'';
   const names=voices.map(v=>({id:v.id,name:v.name})).slice(0,250);
   localStorage.setItem('duotranslate.eleven.voices.v29',JSON.stringify(names));
   list.replaceChildren();
@@ -827,10 +827,8 @@ function quickVoiceApply(quiet=false){
  const lang=quickVoiceTarget(),cfg=premiumStored(),pin=sessionStorage.getItem('duotranslate.voice.pin.session')||'';
  const id=$('quickPremiumVoiceSelect').value;
  if(!cfg.url||!pin||!id){$('quickVoiceHelp').textContent='Selecione uma voz e confira a configuração da ElevenLabs.';return false;}
- // Ao clicar em 'Usar esta voz', a pessoa escolhe ativar a voz que consome créditos.
- cfg.enabled=true;cfg.voices={...(cfg.voices||{}),[lang]:id};
- localStorage.setItem('duotranslate.premium.voice.v1',JSON.stringify(cfg));
- integrateFrameDoc()?.defaultView?.DuoPremiumVoice?.configure({...cfg,pin});
+ // A seleção salva e ativa a voz ElevenLabs para o idioma.
+ window.DuoEleven.selectVoice(lang,id);
  $('quickVoiceHelp').textContent='Voz selecionada. Agora é só começar a ouvir.';
  return true;
 }
@@ -844,17 +842,17 @@ function unlockQuickTestAudio(){
   return quickTestAudioContext;
  }catch(e){return null}
 }
-async function quickVoiceSample(){
- const voiceId=$('quickPremiumVoiceSelect').value;
- if(!voiceId){$('quickVoiceHelp').textContent='Selecione uma voz primeiro.';return}
+async function quickVoiceSample(selectId='quickPremiumVoiceSelect',lang=quickVoiceTarget(),helpId='quickVoiceHelp',buttonId='quickVoiceTry'){
+ const voiceId=$(selectId).value;
+ if(!voiceId){$(helpId).textContent='Selecione uma voz ElevenLabs primeiro.';return}
  const ctx=unlockQuickTestAudio(); // antes do primeiro await para liberar áudio no navegador
- if(!quickVoiceApply(true))return;
- const doc=integrateFrameDoc(),api=doc?.defaultView?.DuoPremiumVoice,lang=quickVoiceTarget();
- if(!api){$('quickVoiceHelp').textContent='Aguarde o tradutor carregar.';return}
+ if(!window.DuoEleven.selectVoice(lang,voiceId))return;
+ const doc=integrateFrameDoc(),api=doc?.defaultView?.DuoPremiumVoice||window.DuoPremiumVoice;
+ if(!api){$(helpId).textContent='Aguarde o serviço de voz carregar.';return}
  const cfg=premiumStored(),pin=sessionStorage.getItem('duotranslate.voice.pin.session')||'';
- const phrase=doc?.defaultView?.DuoLanguages?.[lang]?.sample||'Olá! Vamos conversar?';
- const btn=$('quickVoiceTry');btn.disabled=true;
- $('quickVoiceHelp').textContent='Gerando a amostra na ElevenLabs…';
+ const phrase=doc?.defaultView?.DuoLanguages?.[lang]?.sample||phrases[lang]||'Olá! Vamos conversar?';
+ const btn=$(buttonId);btn.disabled=true;
+ $(helpId).textContent='Gerando a amostra na ElevenLabs…';
  try{
   if(!ctx){await api.speak(phrase,lang);}
   else{
@@ -876,8 +874,8 @@ async function quickVoiceSample(){
     src.onended=resolve;try{src.start()}catch(e){reject(e)}
    });
   }
-  $('quickVoiceHelp').textContent='Amostra reproduzida. Se não ouviu, confira o volume e o fone.';
- }catch(e){$('quickVoiceHelp').textContent='Não foi possível ouvir: '+String(e?.message||e)}
+ $(helpId).textContent='Amostra reproduzida. Se não ouviu, confira o volume e o fone.';
+ }catch(e){$(helpId).textContent='Não foi possível ouvir: '+String(e?.message||e)}
  finally{btn.disabled=false}
 }
 function intGo(view,setting){if(intState.view==='talk'&&view!=='talk'){const d=integrateFrameDoc();const b=d?.getElementById('listenBtn');if(d?.getElementById('micBadge')?.classList.contains('active'))b?.click();}if(['solo','nearby','listening'].includes(intState.view)&&view!==intState.view){const d=integrateFrameDoc();const b=d?.getElementById('soloToggle');if(b?.classList.contains('solo-on'))b.click();}intState.view=view;if(setting)intState.settings=setting;renderInt();window.scrollTo({top:0,behavior:'instant'});}
@@ -901,16 +899,18 @@ for(const v of saved){const row=document.createElement('div');row.className='int
 function enterIntegrated(data,fromReload=false){if(!data)return;intState.data=data;document.body.classList.add('integrated-active');$('integratedApp').classList.remove('integration-hidden');for(const id of ['intSpeak','intHear','intSettingSpeak','intSettingHear']){$(id).innerHTML=opts}const uiOpts=langs.map(x=>`<option value="${x[0]}">${x[1]}</option>`).join('');$('intInterfaceLang').innerHTML=uiOpts;intState.view=/^[A-Z0-9]{8}$/.test(String(new URLSearchParams(location.search).get('room')||'').toUpperCase())?'connect':'home';$('oneSource').innerHTML=opts;$('oneTarget').innerHTML=opts;$('oneSource').value=data.hear;$('oneTarget').value=data.speak;renderInt();
 const frame=$('duoRealFrame');if(!frame.getAttribute('src')||frame.getAttribute('src')==='about:blank'){frame.addEventListener('load',()=>{intState.frameReady=false;intState.frameObserver?.disconnect();intState.frameObserver=null;applyPrefsToEmbeddedBeta(intState.data);
  const code=readTrustedCodes().gemini,doc=integrateFrameDoc(),field=doc?.getElementById('aiWorkerPin');
- if(code&&field&&!field.value){field.value=code;field.dispatchEvent(new doc.defaultView.Event('change',{bubbles:true}));}}, {once:true});const roomId=String(new URLSearchParams(location.search).get('room')||'').toUpperCase();const roomParam=/^[A-Z0-9]{8}$/.test(roomId)?'?room='+roomId+'&duoAccess=1':'?duoAccess=1';frame.src=new URL('../engine-v2.7/'+roomParam,window.location.href).href}else if(!fromReload)applyPrefsToEmbeddedBeta(data);window.scrollTo(0,0)}
+ if(code&&field&&!field.value){field.value=code;field.dispatchEvent(new doc.defaultView.Event('change',{bubbles:true}));}}, {once:true});const roomId=String(new URLSearchParams(location.search).get('room')||'').toUpperCase();const roomParam=/^[A-Z0-9]{8}$/.test(roomId)?'?room='+roomId+'&duoAccess=2':'?duoAccess=2';frame.src=new URL('../engine-v2.7/'+roomParam,window.location.href).href}else if(!fromReload)applyPrefsToEmbeddedBeta(data);window.scrollTo(0,0)}
 function leaveIntegrated(backToStart){const frame=$('duoRealFrame');intState.frameObserver?.disconnect();intState.frameObserver=null;intState.frameReady=false;frame.src='about:blank';document.body.classList.remove('integrated-active');$('integratedApp').classList.add('integration-hidden');show(backToStart?0:2)}
 $('premiumSave').onclick=savePremium;
 $('premiumTest').onclick=testPremiumVoice;
 $('premiumBrowse').onclick=browsePremiumVoices;
-$('premiumVoiceList').onchange=()=>{$('premiumVoiceId').value=$('premiumVoiceList').value};
+$('premiumPin').onchange=()=>window.DuoAccess.configure({voicePin:$('premiumPin').value}).catch(e=>{$('premiumStatus').textContent=String(e.message||e);});
+$('premiumVoiceList').onchange=()=>{$('premiumVoiceId').value=$('premiumVoiceList').value;$('premiumEnable').checked=true;savePremium();};
 $('premiumLanguage').onchange=()=>{$('premiumVoiceId').value=(premiumStored().voices||{})[$('premiumLanguage').value]||''};
 $('intPhraseToggle').onchange=()=>{localStorage.setItem('duotranslate.phrasebook.enabled.v1',$('intPhraseToggle').checked?'1':'0');renderPhrasePanel()};
 $('quickVoiceBrowse').onclick=quickVoiceBrowse;
-$('quickVoiceTry').onclick=quickVoiceSample;
+$('quickVoiceTry').onclick=()=>quickVoiceSample();
+$('quickPremiumVoiceSelect').onchange=()=>quickVoiceApply(true);
 $('quickVoiceApply').onclick=()=>quickVoiceApply();
 $('oneSource').addEventListener('change',()=>{if(['nearby','listening'].includes(intState.view))applyOnePhone(false)});
 $('oneTarget').addEventListener('change',()=>{if(['nearby','listening'].includes(intState.view)){applyOnePhone(false);refreshQuickVoice()}});
@@ -934,10 +934,16 @@ if(!reduced)setInterval(()=>{if(step!==0||$('uiLang').value)return;
 },2350);
 show(0);populateVoices();
 function updateTrustedMessage(message){
- const saved=readTrustedCodes();
- $('trustedStatus').textContent=message||(saved.gemini||saved.voice?'Acesso lembrado para: '+[saved.gemini?'Gemini':null,saved.voice?'ElevenLabs':null].filter(Boolean).join(' e ')+'.':'Nenhum código salvo de forma permanente.');
+ $('trustedSave').textContent=window.DuoAccess.role==='admin'?'Copiar convite individual':'Lembrar neste dispositivo';
+ $('trustedStatus').textContent=message||(window.DuoAccess.remembered?'Acesso e configuração de voz lembrados neste aparelho.':'Seu acesso ainda não foi salvo neste aparelho.');
 }
-$('trustedSave').onclick=()=>{
+$('trustedSave').onclick=async()=>{
+ if(window.DuoAccess.role==='admin'){
+  const btn=$('trustedSave');btn.disabled=true;
+  try{const copied=await window.DuoAccess.copyInvite();updateTrustedMessage(copied?'Convite individual copiado. Envie o link para a outra pessoa.':'Copie e envie o convite exibido.');}
+  catch(e){updateTrustedMessage(String(e.message||e));}finally{btn.disabled=false;}
+  return;
+ }
  if(window.DuoAccess?.active){window.DuoAccess.remember();updateTrustedMessage('Seu acesso individual será lembrado neste dispositivo.');return;}
  const old=readTrustedCodes(),doc=integrateFrameDoc();
  const gemini=sessionStorage.getItem('duotranslate.pin.session.v1')||doc?.getElementById('aiWorkerPin')?.value||old.gemini||'';
@@ -950,6 +956,8 @@ $('trustedForget').onclick=()=>{localStorage.removeItem(TRUSTED_CODES_KEY);
  window.DuoAccess?.forget();
  updateTrustedMessage('Códigos guardados apagados. Sua sessão atual não foi interrompida.')};
 updateTrustedMessage();
+window.addEventListener('duo-access-changed',()=>{updateTrustedMessage();window.DuoEleven.sync();if(step===3)populateVoices();if(intState.data&&['languages','connect','talk','nearby','listening','solo'].includes(intState.view))refreshQuickVoice();});
+window.DuoEleven.sync();
 const previouslyCompleted=persistedIntegration();if(previouslyCompleted&&new URLSearchParams(location.search).get('inicio')!=='1')enterIntegrated(previouslyCompleted,true);
 window.DuoAccess?.renderStatus();
 })();
