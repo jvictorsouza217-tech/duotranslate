@@ -123,7 +123,7 @@ function exportCsv(){
  r.at,r.mode,r.direction,r.source,r.target,r.original,r.translation,r.provider,r.translationMs,
  r.comparison?.gemini?.text||'',r.comparison?.gemini?.ms??'',
  r.comparison?.mymemory?.text||'',r.comparison?.mymemory?.ms??'',
- r.analysis?.text||''
+ r.analysis?.text||'',r.error||''
  ]);
  download('\uFEFF'+[cols.map(quote).join(','),...values.map(row=>row.map(quote).join(','))].join('\r\n'),'text/csv;charset=utf-8',safeName()+'.csv');
  info('CSV criado com '+records.length+' registros. Ele contém suas frases completas: compartilhe apenas se desejar.');
