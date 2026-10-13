@@ -150,7 +150,7 @@ function renderStatus(doc=document) {
 async function signedFetch(input,init={}) {
  await access.ready;
  const url=new URL(typeof input==='string' || input instanceof URL ? String(input):input.url,location.href);
- const trusted=(url.origin===API && ['/translate','/analyze'].includes(url.pathname)) ||
+ const trusted=(url.origin===API && ['/translate','/analyze','/live-token'].includes(url.pathname)) ||
   (url.origin===VOICE && ['/tts','/voices','/stream-tts'].includes(url.pathname));
  if(!trusted || !session?.token)return nativeFetch(input,init);
  const headers=new Headers(init.headers || (input instanceof Request?input.headers:undefined));

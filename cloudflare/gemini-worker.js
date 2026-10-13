@@ -8,6 +8,7 @@
  */
 import {handleAccessRequest} from './access-store.js';
 import {individualAccess} from './access-auth.js';
+import {createLiveToken} from './live-token.js';
 export {DuoAccessStore} from './access-store.js';
 const APP_ORIGIN = 'https://jvictorsouza217-tech.github.io';
 const DEFAULT_MODEL = 'gemini-3.5-flash-lite';
@@ -49,7 +50,8 @@ export default {
   if(url.pathname.startsWith('/access/'))return handleAccessRequest(request,env,sameSecret);
   if(request.method==='GET' && url.pathname==='/health')
    return json({ok:true,service:'DuoTranslate AI',version:'1.7.0',configured:!!(env.GEMINI_API_KEY&&env.DUO_ACCESS_CODE),model:DEFAULT_MODEL,individualAccess:!!env.DUO_ACCESS_STORE,accessVersion:1});
-  if(request.method!=='POST' || (url.pathname!=='/translate' && url.pathname!=='/analyze'))
+  if(url.pathname==='/live-token'&&request.method==='POST')return createLiveToken(request,env);
+   if(request.method!=='POST' || (url.pathname!=='/translate' && url.pathname!=='/analyze'))
    return json({error:'Rota não encontrada.'},404);
   if(!env.GEMINI_API_KEY||!env.DUO_ACCESS_CODE)
    return json({error:'Faltam os Secrets GEMINI_API_KEY e/ou DUO_ACCESS_CODE no Cloudflare.'},503);
