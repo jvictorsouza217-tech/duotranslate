@@ -1114,4 +1114,40 @@ test('2.14 requires explicit selection before accessing ElevenLabs and reports v
  assert.equal(c.spoken.length,0,'No device speech should be substituted for a failed premium voice');
  assert.match(c.get('duoListen214Status').textContent,/Nenhuma troca automática de voz/);
  assert.equal(c.get('duoListen214Translation').textContent,'Traduit: Um teste de voz premium');
+ const hist=JSON.parse(c.storage.getItem('duotranslate.local.history.v1'));
+ assert.equal(hist[0].duo214.audioStatus,'failed');
+ assert.match(hist[0].error,/Limite de voz/);
+});
+
+
+test('2.14 without Chrome model refuses unknown phrases instead of silently calling Gemini/MyMemory',async()=>{
+ const code=await readFile(new URL('../voice/listening-v214.js',import.meta.url),'utf8');
+ const c=makeListen214Browser(code,{translator:false});
+ let calls=0;c.window.DuoReliable.translate=async()=>{calls++;return {text:'Unexpected'};};
+ c.get('duoListen214ManualText').value='Frase nova sem modelo';
+ c.get('duoListen214Manual').click();
+ await new Promise(resolve=>setTimeout(resolve,20));
+ assert.equal(calls,0);
+ assert.equal(c.spoken.length,0);
+ assert.match(c.get('duoListen214Status').textContent,/Chrome Translator local não preparado/);
+ assert.equal(JSON.parse(c.storage.getItem('duotranslate.local.history.v1'))[0].mode,'listening');
+});
+
+test('2.14 ElevenLabs success reports selected voice and records actual playback stage',async()=>{
+ const code=await readFile(new URL('../voice/listening-v214.js',import.meta.url),'utf8');
+ const c=makeListen214Browser(code,{withAccess:true});
+ await c.get('duoListen214Prepare').click();
+ c.get('duoListen214Output').value='eleven';
+ c.get('duoListen214Output').change();
+ c.get('duoListen214Premium').value='abcdefghijklmnopqrst';
+ c.get('duoListen214ManualText').value='Vou traduzir para o francês';
+ c.get('duoListen214Manual').click();
+ await new Promise(resolve=>setTimeout(resolve,40));
+ assert.equal(c.apiCalls.length,1);
+ assert.equal(JSON.parse(c.apiCalls[0].init.body).lang,'fr-FR');
+ assert.equal(c.spoken.length,0);
+ assert.match(c.get('duoListen214Metrics').textContent,/reprodução iniciada/);
+ const items=JSON.parse(c.storage.getItem('duotranslate.local.history.v1'));
+ assert.equal(items[0].duo214.audioStatus,'started');
+ assert.equal(items[0].error,'');
 });
