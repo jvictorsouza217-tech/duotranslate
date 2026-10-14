@@ -937,7 +937,7 @@ document.querySelector('label[for="intSpeak"]').textContent=t.speak;document.que
  else $('intFrameArea').before($('quickVoicePanel'));
  $('intContinuousPanel').classList.toggle('integration-hidden',intState.view!=='continuous');
  $('duoListen214Panel').classList.toggle('integration-hidden',intState.view!=='listening');
- if(intState.view==='listening')window.DuoListening214?.mount({from:d.speak,to:d.hear});
+ if(intState.view==='listening')window.DuoListening214?.mount({from:d.hear,to:d.speak});
  window.DuoListening214?.setVisible(intState.view==='listening');
  $('intFreePanel').classList.toggle('integration-hidden',intState.view!=='free');
  if(intState.view==='free')window.DuoFreeLab?.mount();
