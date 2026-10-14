@@ -46,7 +46,7 @@ async function loadVoices(lang){
  if(s)s.voice=select.value;
 }
 function randomTicket(){const bytes=new Uint8Array(16);crypto.getRandomValues(bytes);return Array.from(bytes,b=>b.toString(16).padStart(2,'0')).join('');}
-function createState(role,ticket,name,speak,hear){return {role,ticket,name,speak,hear,voice:'local',active:true,paired:false,peer:null,ws:null,retries:0,
+function createState(role,ticket,name,speak,hear){return {role,ticket,name,speak,hear,voice:(window.DuoAccess?.active&&window.DuoEleven?.choices?.(hear)?.selected)||'local',active:true,paired:false,peer:null,ws:null,retries:0,
  permission:false,paused:false,rec:null,restart:null,reconnect:null,audio:null,playing:false,sound:null,pending:0,playlist:[],link:''};}
 function makeLink(){
  const url=new URL('/duotranslate/preview/v2.17/',location.origin);
@@ -62,12 +62,12 @@ function connect(){
  let ws;
  try{ws=new WebSocket(socketUrl());}catch(e){setStatus('Erro de WebSocket: '+String(e.message||e));return;}
  session.ws=ws;session.paired=false;setStatus(t('connecting'));
- ws.onopen=()=>{if(s!==session)return;session.retries=0;sendHello();};
+ ws.onopen=()=>{if(s!==session)return;sendHello();};
  ws.onmessage=e=>{
   if(s!==session)return;let msg;try{msg=JSON.parse(e.data);}catch{return;}
   if(msg.type==='ready')sendHello();
   if(msg.type==='waiting'){session.paired=false;haltRecognition();setStatus(t('waiting'));}
-  if(msg.type==='paired'){session.paired=true;session.peer=msg.peer;setStatus(t('connected'));listen();}
+  if(msg.type==='paired'){session.paired=true;session.retries=0;session.peer=msg.peer;setStatus(t('connected'));listen();}
   if(msg.type==='speech'&&msg.target===session.hear){display(msg.original,msg.translation,false);session.playlist.push(msg.translation);void playQueue();}
   if(msg.type==='error')setStatus(String(msg.message||'Erro de conexão'));
  };
@@ -124,10 +124,10 @@ async function translate(original){
 }
 function localSpeech(text){
  return new Promise((resolve,reject)=>{
-  if(!speechSynthesis||!window.SpeechSynthesisUtterance){reject(Error('Voz do dispositivo indisponível'));return;}
+  if(!window.speechSynthesis||!window.SpeechSynthesisUtterance){reject(Error('Voz do dispositivo indisponível'));return;}
   const u=new SpeechSynthesisUtterance(text);u.lang=s.hear;u.rate=1;
-  const voices=speechSynthesis.getVoices(),v=voices.find(x=>x.lang===s.hear)||voices.find(x=>x.lang?.slice(0,2)===s.hear.slice(0,2));if(v)u.voice=v;
-  u.onend=resolve;u.onerror=e=>reject(Error(e.error||'Falha na voz'));speechSynthesis.speak(u);
+  const voices=window.speechSynthesis.getVoices(),v=voices.find(x=>x.lang===s.hear)||voices.find(x=>x.lang?.slice(0,2)===s.hear.slice(0,2));if(v)u.voice=v;
+  u.onend=resolve;u.onerror=e=>reject(Error(e.error||'Falha na voz'));window.speechSynthesis.speak(u);
  });
 }
 async function premiumSpeech(text){
@@ -161,7 +161,7 @@ async function premiumInvite(){
   const fragment=new URL(invite).hash;
   if(!/^#duo-invite=[a-f0-9]{64}$/.test(fragment))throw Error('Convite premium não autorizado.');
   url.hash=fragment;
-  if(s===session){session.link=url.href;setStatus(t('waiting'));}
+  if(s===session){session.link=url.href;if(!session.paired)setStatus(t('waiting'));}
  }catch(e){if(s===session){session.link=url.href;setStatus(t('noPremium'));}}
  if(s===session)$('duo217Copy').disabled=false;
 }
