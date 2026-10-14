@@ -778,3 +778,155 @@ test('2.11 first-screen Next advances even when access/profile synchronization i
   await new Promise(resolve=>setImmediate(resolve));
  }
 });
+
+
+// 2.12: a deterministic in-memory PeerJS test double validates the real
+// conversation engine event handlers; it does not use network, STT, MT or TTS.
+function makeConnectionTestNetwork(){
+ const registered=new Map();
+ let allocated=0;
+ class MockConnection {
+  constructor(){this.events=new Map();this.open=false;this.remote=null;this.closed=false;}
+  on(event,handler){this.events.set(event,handler);return this;}
+  emit(event,payload){this.events.get(event)?.(payload);}
+  send(data){
+   if(!this.open)throw Error('Fake WebRTC channel is closed');
+   const other=this.remote;
+   setTimeout(()=>{if(other?.open)other.emit('data',data);},0);
+  }
+  close(){
+   if(this.closed)return;this.closed=true;this.open=false;this.emit('close');
+   const other=this.remote;if(other&&!other.closed){other.closed=true;other.open=false;other.emit('close');}
+  }
+ }
+ class MockPeer {
+  constructor(id){
+   this.id=id||'test-auto-'+(++allocated);this.events=new Map();
+   registered.set(this.id,this);
+   setTimeout(()=>this.emit('open',this.id),0);
+  }
+  on(event,handler){this.events.set(event,handler);return this;}
+  emit(event,data){this.events.get(event)?.(data);}
+  connect(id){
+   const peer=registered.get(id),local=new MockConnection();
+   if(!peer){setTimeout(()=>this.emit('error',{type:'peer-unavailable'}),0);return local;}
+   const remote=new MockConnection();local.remote=remote;remote.remote=local;
+   setTimeout(()=>{
+    peer.emit('connection',remote);
+    setTimeout(()=>{
+     if(local.closed||remote.closed)return;
+     local.open=true;remote.open=true;
+     remote.emit('open');local.emit('open');
+    },0);
+   },0);
+   return local;
+  }
+  destroy(){registered.delete(this.id);}
+  reconnect(){setTimeout(()=>this.emit('open',this.id),0);}
+ }
+ return MockPeer;
+}
+function makeConnectionTestClient(code,Peer,initialRoom=''){
+ const nodes=new Map(),windows={};
+ class Element {
+  constructor(id=''){this.id=id;this.textContent='';this.value='';
+   this.disabled=false;this.children=[];this.dataset={lang:'pt-BR'};this.style={};this.listeners={};
+   this.classList={values:new Set(),toggle:k=>{},add:k=>{},remove:k=>{},contains:k=>false};}
+  addEventListener(name,fn){this.listeners[name]=fn;}
+  click(){return this.listeners.click?.();}
+  append(...xs){this.children.push(...xs);}
+  appendChild(x){this.children.push(x);}
+  replaceChildren(...xs){this.children=xs;}
+  querySelector(){return null;}
+  setAttribute(){}
+  get firstElementChild(){return this.children[0];}
+  get lastChild(){return this.children.at(-1);}
+  remove(){}
+ }
+ function get(id){if(!nodes.has(id))nodes.set(id,new Element(id));return nodes.get(id);}
+ const document={
+  getElementById:get,
+  createElement:tag=>new Element(tag),
+  createTextNode:s=>({textContent:s}),
+  querySelectorAll:()=>[],
+ };
+ const window={
+  Peer,
+  DuoLanguages:{
+   'pt-BR':{flag:'🇧🇷',name:'Português',sample:'Olá'},
+   'fr-FR':{flag:'🇫🇷',name:'Français',sample:'Bonjour'},
+  },
+  isSecureContext:true,crypto:{getRandomValues:b=>{for(let i=0;i<b.length;i++)b[i]=i;return b;}},
+  speechSynthesis:{cancel(){},getVoices:()=>[]},
+  addEventListener(){},prompt(){},
+ };
+ const location={search:initialRoom?'?room='+initialRoom:'',href:'https://example.test/duotranslate/preview/engine-v2.12/?room='+initialRoom};
+ let networkRequests=0;
+ const context=vm.createContext({
+  window,document,location,navigator:{clipboard:{writeText:async()=>{}}},
+  URL,URLSearchParams,console,performance,
+  setTimeout,clearTimeout,Math,Date,
+  fetch(){networkRequests++;throw Error('Unexpected API use during connection test');}
+ });
+ vm.runInContext(code,context);
+ return {window,get,requests:()=>networkRequests};
+}
+
+test('2.12 isolates a new conversational iframe while retaining 2.11 and no new commercial API',async()=>{
+ const newer=await readFile(new URL('../preview/v2.12/index.html',import.meta.url),'utf8');
+ const previous=await readFile(new URL('../preview/v2.11/index.html',import.meta.url),'utf8');
+ const engine=await readFile(new URL('../preview/engine-v2.12/index.html',import.meta.url),'utf8');
+ const oldEngine=await readFile(new URL('../preview/engine-v2.7/index.html',import.meta.url),'utf8');
+ const app=await readFile(new URL('../preview/engine-v2.12/app.js',import.meta.url),'utf8');
+ const access=await readFile(new URL('../access/client-v2.12.js',import.meta.url),'utf8');
+ const css=s=>(s.match(/<style[^>]*>([\s\S]*?)<\/style>/)||[])[1];
+ assert.equal(css(newer),css(previous),'The approved 2.11 styles must not be changed');
+ assert.ok(newer.includes("new URL('../engine-v2.12/'+roomParam"));
+ assert.ok(previous.includes("new URL('../engine-v2.7/'+roomParam"));
+ assert.ok(engine.includes('preview/engine-v2.12/app.js'));
+ assert.ok(oldEngine.includes('preview/engine-v2.7/app.js'));
+ assert.ok(access.includes("if(!/\\/preview\\/v2\\.12\\/?$/.test(location.pathname))return;"));
+ assert.ok(access.includes("new URL('/duotranslate/preview/v2.12/',location.href)"));
+ assert.ok(engine.includes('id="duoPingBtn"'));
+ assert.ok(app.includes("type:'duo-test'"));
+ assert.ok(!app.includes('DuoAccess.invite(state.room)'));
+});
+
+test('2.12 connects two peers, exchanges language handshakes and acknowledges free ping',async()=>{
+ const code=await readFile(new URL('../preview/engine-v2.12/app.js',import.meta.url),'utf8');
+ const Peer=makeConnectionTestNetwork();
+ const a=makeConnectionTestClient(code,Peer);
+ const b=makeConnectionTestClient(code,Peer);
+ a.get('createBtn').click();
+ await new Promise(resolve=>setTimeout(resolve,20));
+ assert.equal(a.window.DuoConnectionStatus.phase,'waiting');
+ const room=a.get('roomCode').textContent;
+ assert.match(room,/^[A-HJ-NP-Z2-9]{8}$/);
+ b.get('codeInput').value=room;
+ b.get('joinBtn').click();
+ await new Promise(resolve=>setTimeout(resolve,55));
+ assert.equal(a.window.DuoConnectionStatus.connected,true);
+ assert.equal(b.window.DuoConnectionStatus.connected,true);
+ assert.equal(a.window.DuoConnectionStatus.phase,'connected');
+ assert.equal(b.window.DuoConnectionStatus.phase,'connected');
+ assert.equal(b.get('duoPingBtn').disabled,false);
+ b.get('duoPingBtn').click();
+ await new Promise(resolve=>setTimeout(resolve,35));
+ assert.match(b.get('duoPingStatus').textContent,/Teste aprovado.*ms/);
+ assert.match(a.get('duoPingStatus').textContent,/Teste recebido/);
+ assert.equal(a.requests()+b.requests(),0);
+});
+
+test('2.12 reports missing room as failure instead of indefinite Aguardando',async()=>{
+ const code=await readFile(new URL('../preview/engine-v2.12/app.js',import.meta.url),'utf8');
+ const Peer=makeConnectionTestNetwork();
+ const guest=makeConnectionTestClient(code,Peer);
+ guest.get('codeInput').value='ABCDEFGH';
+ guest.get('joinBtn').click();
+ await new Promise(resolve=>setTimeout(resolve,35));
+ assert.equal(guest.window.DuoConnectionStatus.phase,'failed');
+ assert.match(guest.window.DuoConnectionStatus.message,/Sala não encontrada/);
+ assert.equal(guest.get('duoRetryBtn').disabled,false);
+ assert.equal(guest.get('duoPingBtn').disabled,true);
+ assert.equal(guest.requests(),0);
+});
