@@ -2,7 +2,7 @@
 <html lang="pt-BR">
 <head>
 <meta charset="utf-8"/><meta name="viewport" content="width=device-width, initial-scale=1"/>
-<title>DuoTranslate 2.10 — Conversação e vozes</title>
+<title>DuoTranslate 2.11 — Conversação e vozes</title>
 <meta name="theme-color" content="#FAF8F5"/>
 <link href="https://fonts.googleapis.com/css2?family=GFS+Baskerville&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet"/>
 <style>
@@ -198,6 +198,21 @@ body[data-duo-int-view="listening"] #intOnePhoneOptions .int-actions{display:non
 #intOnePhoneOptions .int-fieldrow{margin:0!important}
 #intFrameArea{margin-top:0!important}
 @media(max-width:640px){.duo-voice-controls{grid-template-columns:1fr}.duo-voice-buttons{display:grid;grid-template-columns:1fr 1fr}.duo-voice-buttons button:last-child{grid-column:1 / -1;margin-left:0}.duo-voice-card{padding:17px!important}#intOnePhoneOptions{padding:16px!important}}
+
+/* Only version 2.11 free-lab styles below; legacy 2.10 CSS is unchanged. */
+.free-panel{display:grid;gap:14px}.free-panel h3{color:#17365D;font-size:19px;margin:0}
+.free-panel .free-note{background:#F8F5FA;border:1px solid #E5DCE5;border-radius:12px;padding:12px 15px;line-height:1.55;font-size:13px;color:#514B5C}
+.free-panel .free-status{font-size:13px;color:#17365D;line-height:1.5;min-height:20px}
+.free-panel .free-result{border:1px solid #E5DCE5;border-radius:13px;padding:13px;display:grid;gap:5px}
+.free-panel .free-result p,.free-panel .free-result strong{margin:0;overflow-wrap:anywhere}
+.free-panel .free-preview{font-size:14px;color:#675D70}
+.free-panel .free-row{border-bottom:1px solid #E5DCE5;padding:9px 0;display:grid;gap:4px}
+.free-panel .free-row p,.free-panel .free-row strong{margin:0;overflow-wrap:anywhere}
+.free-panel .free-checks{display:grid;gap:10px;font-size:13px}
+.free-panel .free-checks label{display:flex;align-items:flex-start;gap:8px}
+.free-panel #freeInput{width:100%}.free-panel .free-results{max-height:300px;overflow-y:auto}
+.free-panel .free-metrics{font-size:12px;color:#665977}
+@media(max-width:640px){.free-panel .int-actions{display:grid}.free-panel .int-actions button{width:100%}}
 </style>
 </head>
 <body class="gate-active">
@@ -313,7 +328,8 @@ body[data-duo-int-view="listening"] #intOnePhoneOptions .int-actions{display:non
           <button class="mode-choice" type="button" id="intOpenNearby"><span class="choice-icon">◌</span><span class="choice-text"><strong id="modeNearbyTitle">Sem conectar os celulares</strong><small id="modeNearbyDesc">Um único celular com o aplicativo, com ou sem fones. Para responder, inverta os idiomas manualmente.</small><em id="modeNearbyBadge">Experimental · troca manual</em></span><span class="choice-arrow">›</span></button>
         </section>
         <button type="button" class="mode-choice mode-listen" id="intOpenListen"><span class="choice-icon copper">◖</span><span class="choice-text"><strong id="modeListenTitle">Escutar e traduzir</strong><small id="modeListenDesc">Use apenas seu celular e o aplicativo, com ou sem fones. Entenda aulas, palestras ou filmes reproduzidos perto do microfone sem precisar responder.</small><em id="modeListenBadge">Experimental · áudio captado pelo microfone</em></span><span class="choice-arrow">›</span></button>
-        <button type="button" class="mode-choice mode-listen" id="intOpenContinuous"><span class="choice-icon copper">◖</span><span class="choice-text"><strong>Tradução contínua</strong><small>Para palestras, aulas e filmes perto do microfone. Continua ouvindo enquanto reproduz a tradução, com um pequeno atraso.</small><em>Use fones para evitar que a tradução volte ao microfone</em></span><span class="choice-arrow">›</span></button>
+        <button type="button" class="mode-choice mode-listen" id="intOpenFree"><span class="choice-icon copper">◇</span><span class="choice-text"><strong>Laboratório gratuito 2.11</strong><small>Tradução no dispositivo, quando disponível. Prévia de fala, tradução por texto, áudio gratuito e Histórico, sem APIs comerciais.</small><em>Sem créditos de API · Chrome desktop recomendado</em></span><span class="choice-arrow">›</span></button>
+         <button type="button" class="mode-choice mode-listen" id="intOpenContinuous"><span class="choice-icon copper">◖</span><span class="choice-text"><strong>Tradução contínua</strong><small>Para palestras, aulas e filmes perto do microfone. Continua ouvindo enquanto reproduz a tradução, com um pequeno atraso.</small><em>Use fones para evitar que a tradução volte ao microfone</em></span><span class="choice-arrow">›</span></button>
         <button type="button" class="mode-extra" id="intOpenSolo"><span id="intSoloTitle">Laboratório de tradução</span> ↗</button>
       </div>
     </div>
@@ -330,7 +346,32 @@ body[data-duo-int-view="listening"] #intOnePhoneOptions .int-actions{display:non
         <p class="int-caption" id="oneStatus" role="status" aria-live="polite"></p>
       </div>
       <section id="intContinuousPanel" class="integration-hidden int-panel"><button id="continuousToggle" type="button" class="int-primary">Iniciar tradução contínua</button><p id="continuousStatus" role="status" aria-live="polite"></p><p id="continuousCaption"></p><div id="continuousResults"></div></section>
-      <section id="intPremiumPanel" class="integration-hidden int-phrase-panel">
+      
+<section id="intFreePanel" class="integration-hidden int-panel free-panel" aria-label="Laboratório gratuito">
+<h3>Experimento gratuito · tradução local</h3>
+<p class="free-note"><strong>Sem cobranças de API:</strong> frases livres usam o motor local do Chrome, quando disponível; ele pode baixar pacotes de idiomas. Para o microfone, o reconhecimento do navegador pode usar servidores do próprio fabricante se você não exigir reconhecimento local. A voz é a do aparelho, <strong>não</strong> ElevenLabs. Não há chamadas ao Gemini, Soniox, OpenAI, MyMemory ou ElevenLabs neste laboratório. Sem motor local, só traduzimos expressões disponíveis no vocabulário rápido.</p>
+<div class="int-fieldrow">
+<div><label class="int-label" for="freeFrom">Idioma que estou falando</label><select class="int-select" id="freeFrom"></select></div>
+<div><label class="int-label" for="freeTo">Idioma que quero ouvir</label><select class="int-select" id="freeTo"></select></div>
+</div>
+<div class="int-actions"><button type="button" class="int-primary" id="freePrepare">Preparar tradução local</button><button type="button" class="int-ghost" id="freeListen" aria-pressed="false">Iniciar escuta</button></div>
+<p id="freeCompat" class="free-status" role="status" aria-live="polite"></p>
+<div class="free-checks">
+<label><input type="checkbox" id="freeDeviceOnly"> Exigir reconhecimento de fala no aparelho (se o navegador permitir)</label>
+<label><input type="checkbox" id="freeSpeak" checked> Ler tradução com voz gratuita do aparelho</label>
+<label><input type="checkbox" id="freeInterrupt" checked> Interromper o áudio anterior para ouvir a nova tradução</label>
+</div>
+<div><label class="int-label" for="freeVoice">Voz do navegador — não ElevenLabs</label><select class="int-select" id="freeVoice"></select></div>
+<div><label class="int-label" for="freeInput">Teste digitado — sem microfone</label>
+<input type="text" class="int-select" maxlength="600" id="freeInput" placeholder="Ex.: Olá, tudo bem?" autocomplete="off">
+<div class="int-actions"><button type="button" class="int-ghost" id="freeManual">Traduzir gratuitamente</button></div></div>
+<p class="free-status" id="freeStatus" role="status" aria-live="polite">Pronto. Nenhum crédito de API utilizado.</p>
+<p class="free-preview" id="freePreview" aria-live="polite"></p>
+<div class="free-result"><small>RECONHECIDO</small><p id="freeOriginal">—</p><small>TRADUÇÃO</small><strong id="freeTranslated">—</strong></div>
+<p id="freeMetrics" class="free-metrics"></p><div id="freeResults" class="free-results" aria-live="polite"></div>
+<p class="int-caption">Frases parciais são provisórias. A disponibilidade de tradução e reconhecimento varia por aparelho. O Histórico usa armazenamento local e não guarda áudio.</p>
+</section>
+<section id="intPremiumPanel" class="integration-hidden int-phrase-panel">
         <h3>Voz ElevenLabs</h3>
         <p>Escolha uma voz e toque nela para ouvir uma amostra. Sua escolha fica salva neste aparelho.</p>
         <div id="premiumAdminConfig"><div class="int-fieldrow">
@@ -401,7 +442,7 @@ body[data-duo-int-view="listening"] #intOnePhoneOptions .int-actions{display:non
   </div>
 </section>
 
-<script src="../../translation/reliable.js?v=1"></script><script src="../../voice/picker.js?v=2"></script><script src="../../voice/continuous.js?v=3"></script><script src="../../voice/profile.js?v=1"></script><script src="../../access/client.js?v=4"></script><script src="../engine-v2.7/premium-voice.js?v=2.7-access-2"></script><script src="../../access/eleven-setup.js?v=2"></script><script src="../../access/users.js?v=1" defer></script>
+<script src="../engine-v2.7/phrasebook.js?v=2.11-free"></script><script src="../../voice/free-lab.js?v=1"></script><script src="../../translation/reliable.js?v=1"></script><script src="../../voice/picker.js?v=2"></script><script src="../../voice/continuous.js?v=3"></script><script src="../../voice/profile.js?v=1"></script><script src="../../access/client.js?v=4"></script><script src="../engine-v2.7/premium-voice.js?v=2.7-access-2"></script><script src="../../access/eleven-setup.js?v=2"></script><script src="../../access/users.js?v=1" defer></script>
 <script>
 (async()=>{'use strict';
 await window.DuoAccess?.ready;
@@ -886,7 +927,7 @@ async function quickVoiceSample(selectId='quickPremiumVoiceSelect',lang=quickVoi
  }catch(e){$(helpId).textContent='Não foi possível ouvir: '+String(e?.message||e)}
  finally{btn.disabled=false}
 }
-function intGo(view,setting,back=false){window.DuoVoicePicker.stop();if(intState.view==='continuous'&&view!=='continuous')continuous.stop();if(!back&&(view!==intState.view||(setting&&setting!==intState.settings)))intNavigation.push({view:intState.view,settings:intState.settings});if(intState.view==='talk'&&view!=='talk'){const d=integrateFrameDoc();const b=d?.getElementById('listenBtn');if(d?.getElementById('micBadge')?.classList.contains('active'))b?.click();}if(['solo','nearby','listening'].includes(intState.view)&&view!==intState.view){const d=integrateFrameDoc();const b=d?.getElementById('soloToggle');if(b?.classList.contains('solo-on'))b.click();}intState.view=view;if(setting)intState.settings=setting;renderInt();window.scrollTo({top:0,behavior:'instant'});}
+function intGo(view,setting,back=false){if(intState.view==='free'&&view!=='free')window.DuoFreeLab?.stop('');window.DuoVoicePicker.stop();if(intState.view==='continuous'&&view!=='continuous')continuous.stop();if(!back&&(view!==intState.view||(setting&&setting!==intState.settings)))intNavigation.push({view:intState.view,settings:intState.settings});if(intState.view==='talk'&&view!=='talk'){const d=integrateFrameDoc();const b=d?.getElementById('listenBtn');if(d?.getElementById('micBadge')?.classList.contains('active'))b?.click();}if(['solo','nearby','listening'].includes(intState.view)&&view!==intState.view){const d=integrateFrameDoc();const b=d?.getElementById('soloToggle');if(b?.classList.contains('solo-on'))b.click();}intState.view=view;if(setting)intState.settings=setting;renderInt();window.scrollTo({top:0,behavior:'instant'});}
 function renderInt(){const d=intState.data;if(!d)return;document.body.dataset.duoIntView=intState.view;const t=tInt();const home=intState.view==='home';$('intHome').classList.toggle('integration-hidden',!home);$('intRoute').classList.toggle('integration-hidden',home);$('intHistory').setAttribute('aria-current',intState.view==='history'?'page':'false');$('intSettings').setAttribute('aria-current',intState.view==='settings'?'page':'false');$('intHistory').title=t.history;$('intHistory').setAttribute('aria-label',t.history);$('intSettings').title=t.settings;$('intSettings').setAttribute('aria-label',t.settings);
 for(const [id,key] of [['intHomeKicker','welcome'],['intHomeTitle','home'],['intHomeDesc','homeDesc'],['intLiveTitle','live'],['intLiveDesc','liveDesc'],['intSoloTitle','solo'],['intBack','back'],['intLangInfo','changeLater'],['intToConnect','nextConnect'],['intToTalk','nextTalk'],['intSettingSpeakLabel','speak'],['intSettingHearLabel','hear'],['intInterfaceLabel','appLanguage'],['intSaveLanguages','save'],['intEditDevices','editDevice'],['intDeviceInfo','deviceNote'],['intVersionNotice','note']])$(id).textContent=t[key];
 document.querySelector('label[for="intSpeak"]').textContent=t.speak;document.querySelector('label[for="intHear"]').textContent=t.hear;
@@ -895,6 +936,9 @@ document.querySelector('label[for="intSpeak"]').textContent=t.speak;document.que
  if(intState.view==='continuous')$('intContinuousPanel').before($('quickVoicePanel'));
  else $('intFrameArea').before($('quickVoicePanel'));
  $('intContinuousPanel').classList.toggle('integration-hidden',intState.view!=='continuous');
+ $('intFreePanel').classList.toggle('integration-hidden',intState.view!=='free');
+ if(intState.view==='free')window.DuoFreeLab?.mount();
+ window.DuoFreeLab?.setVisible(intState.view==='free');
 const isSettings=intState.view==='settings',isFrame=['connect','talk','solo','nearby','listening','history'].includes(intState.view)||(isSettings&&['ai','usage'].includes(intState.settings));
 $('intFrameArea').classList.toggle('integration-hidden',!isFrame);$('intSettingTabs').classList.toggle('integration-hidden',!isSettings);$('trustedCodesBox').classList.toggle('integration-hidden',!(isSettings&&['ai','voices'].includes(intState.settings)));const quickVisible=['languages','connect','talk','nearby','listening','continuous','solo'].includes(intState.view);$('quickVoicePanel').classList.toggle('integration-hidden',!quickVisible);if(quickVisible)refreshQuickVoice();$('intLiveLang').classList.toggle('integration-hidden',intState.view!=='languages');$('intOnePhoneOptions').classList.toggle('integration-hidden',!['nearby','listening','continuous'].includes(intState.view));$('oneSwap').classList.toggle('integration-hidden',intState.view!=='nearby');$('intLangSettings').classList.toggle('integration-hidden',!(isSettings&&intState.settings==='idiomas'));$('intDeviceSettings').classList.toggle('integration-hidden',!(isSettings&&intState.settings==='devices'));$('intPremiumPanel').classList.toggle('integration-hidden',!(isSettings&&intState.settings==='voices'));if(isSettings&&intState.settings==='voices')renderPremium();$('intPhrasePanel').classList.toggle('integration-hidden',!(isSettings&&intState.settings==='phrasebook'));$('intLiveConnectNext').classList.toggle('integration-hidden',intState.view!=='connect');$('intProgress').classList.toggle('integration-hidden',!['languages','connect','talk'].includes(intState.view));
 const tags={languages:'01 / 03',connect:'02 / 03',talk:'03 / 03'};
@@ -905,17 +949,18 @@ $('intSettingTabs').replaceChildren();if(isSettings){for(const cat of ['voices',
 const M=mInt();for(const [i,id] of [[0,"intHomeTitle"],[1,"intHomeDesc"],[2,"intLiveTitle"],[3,"intLiveDesc"],[4,"modeConnectTitle"],[5,"modeConnectDesc"],[6,"modeConnectBadge"],[7,"modeNearbyTitle"],[8,"modeNearbyDesc"],[9,"modeNearbyBadge"],[10,"modeListenTitle"],[11,"modeListenDesc"],[12,"modeListenBadge"],[13,"intSoloTitle"]])$(id).textContent=M[i];
 if(intState.view==='nearby'){$('intRouteTitle').textContent=M[14];$('intRouteDesc').textContent=M[15]}
 $('modeListenDesc').textContent='Para falas e conversações: escuta uma frase, traduz e volta a ouvir. Com ou sem fones.';
-if(intState.view==='continuous'){$('intRouteTitle').textContent='Tradução contínua';$('intRouteDesc').textContent='Áudio pelo microfone, enviado à ElevenLabs para transcrição. Fones ajudam a evitar eco. O áudio de outro aplicativo no mesmo celular não é captado diretamente.';}
+if(intState.view==='free'){$('intRouteTitle').textContent='Laboratório gratuito 2.11';$('intRouteDesc').textContent='Tradução no navegador: reconhecimento da fala, prévia contextual e áudio sem créditos comerciais.';}
+ if(intState.view==='continuous'){$('intRouteTitle').textContent='Tradução contínua';$('intRouteDesc').textContent='Áudio pelo microfone, enviado à ElevenLabs para transcrição. Fones ajudam a evitar eco. O áudio de outro aplicativo no mesmo celular não é captado diretamente.';}
 if(intState.view==='listening'){$('intRouteTitle').textContent=M[16];$('intRouteDesc').textContent='Escute falas ao seu redor e ouça a tradução no idioma escolhido. O áudio é captado pelo microfone.'}
 for(const [i,id] of [[18,'oneSourceLabel'],[19,'oneTargetLabel'],[20,'oneExplain'],[21,'oneSwap'],[22,'oneApply']])$(id).textContent=M[i];
-$('intReviewWelcome').textContent=((intState.data?.ui||'').startsWith('pt')?'Rever a configuração inicial ↗':(intState.data?.ui||'').startsWith('fr')?'Revoir la configuration initiale ↗':(intState.data?.ui||'').startsWith('es')?'Revisar configuración inicial ↗':'Review initial setup ↗');$('intStatus').textContent='';if(isSettings&&intState.settings==='devices')renderIntDevices();if(isSettings&&intState.settings==='phrasebook')renderPhrasePanel();updateIntPrefs();showFrameRoute();if(['nearby','listening'].includes(intState.view))applyOnePhone(false);if(intState.view==='continuous'){$('oneExplain').textContent='Escolha o idioma da fonte de áudio e o idioma em que deseja ouvir.';$('oneApply').classList.add('integration-hidden');}else $('oneApply').classList.remove('integration-hidden');}
+$('intReviewWelcome').textContent=((intState.data?.ui||'').startsWith('pt')?'Rever a configuração inicial ↗':(intState.data?.ui||'').startsWith('fr')?'Revoir la configuration initiale ↗':(intState.data?.ui||'').startsWith('es')?'Revisar configuración inicial ↗':'Review initial setup ↗');$('intStatus').textContent='';$('intVersionNotice').textContent='DuoTranslate 2.11 · Testes locais gratuitos · Versão 2.10 preservada';if(isSettings&&intState.settings==='devices')renderIntDevices();if(isSettings&&intState.settings==='phrasebook')renderPhrasePanel();updateIntPrefs();showFrameRoute();if(['nearby','listening'].includes(intState.view))applyOnePhone(false);if(intState.view==='continuous'){$('oneExplain').textContent='Escolha o idioma da fonte de áudio e o idioma em que deseja ouvir.';$('oneApply').classList.add('integration-hidden');}else $('oneApply').classList.remove('integration-hidden');}
 function renderIntDevices(){let saved=[];try{saved=JSON.parse(localStorage.getItem('duotranslate-concept-profile')||'{}').microphoneProfiles||[]}catch(e){}let out=$('intDevicesList');out.replaceChildren();if(!saved.length){const p=document.createElement('p');p.className='int-caption';p.textContent=tInt().deviceNone;out.append(p);return}
 for(const v of saved){const row=document.createElement('div');row.className='int-profile-row';const a=document.createElement('div');const name=document.createElement('strong');name.textContent=v.name||'Dispositivo';const small=document.createElement('small');small.textContent=[v.kind,v.mic,(v.results||[]).some(r=>r.acoustic)?'Perfil acústico: sensibilidade e pausas personalizadas':'Sem perfil acústico — captação padrão'].filter(Boolean).join(' · ');a.append(name,small);row.append(a);out.append(row)}}
 function enterIntegrated(data,fromReload=false){if(!data)return;intNavigation.length=0;intState.data=data;document.body.classList.add('integrated-active');$('integratedApp').classList.remove('integration-hidden');for(const id of ['intSpeak','intHear','intSettingSpeak','intSettingHear']){$(id).innerHTML=opts}const uiOpts=langs.map(x=>`<option value="${x[0]}">${x[1]}</option>`).join('');$('intInterfaceLang').innerHTML=uiOpts;intState.view=/^[A-Z0-9]{8}$/.test(String(new URLSearchParams(location.search).get('room')||'').toUpperCase())?'connect':'home';$('oneSource').innerHTML=opts;$('oneTarget').innerHTML=opts;$('oneSource').value=data.hear;$('oneTarget').value=data.speak;renderInt();
 const frame=$('duoRealFrame');if(!frame.getAttribute('src')||frame.getAttribute('src')==='about:blank'){frame.addEventListener('load',()=>{intState.frameReady=false;intState.frameObserver?.disconnect();intState.frameObserver=null;applyPrefsToEmbeddedBeta(intState.data);
  const code=readTrustedCodes().gemini,doc=integrateFrameDoc(),field=doc?.getElementById('aiWorkerPin');
  if(code&&field&&!field.value){field.value=code;field.dispatchEvent(new doc.defaultView.Event('change',{bubbles:true}));}}, {once:true});const roomId=String(new URLSearchParams(location.search).get('room')||'').toUpperCase();const roomParam=/^[A-Z0-9]{8}$/.test(roomId)?'?room='+roomId+'&duoAccess=2':'?duoAccess=2';frame.src=new URL('../engine-v2.7/'+roomParam,window.location.href).href}else if(!fromReload)applyPrefsToEmbeddedBeta(data);window.scrollTo(0,0)}
-function leaveIntegrated(backToStart){window.DuoVoicePicker.stop();continuous.stop();const frame=$('duoRealFrame');intState.frameObserver?.disconnect();intState.frameObserver=null;intState.frameReady=false;frame.src='about:blank';document.body.classList.remove('integrated-active');$('integratedApp').classList.add('integration-hidden');show(backToStart?0:2)}
+function leaveIntegrated(backToStart){window.DuoVoicePicker.stop();continuous.stop();window.DuoFreeLab?.stop('');const frame=$('duoRealFrame');intState.frameObserver?.disconnect();intState.frameObserver=null;intState.frameReady=false;frame.src='about:blank';document.body.classList.remove('integrated-active');$('integratedApp').classList.add('integration-hidden');show(backToStart?0:2)}
 function recordContinuousHistory(original,translation,error=''){
  try{
   if(localStorage.getItem('duotranslate.history.enabled.v1')==='false')return;
@@ -969,8 +1014,10 @@ $('oneSource').addEventListener('change',()=>{if(['nearby','listening','continuo
 $('oneTarget').addEventListener('change',()=>{if(['nearby','listening','continuous'].includes(intState.view)){applyOnePhone(false);refreshQuickVoice()}});
 $('intHear').addEventListener('change',()=>{if(intState.view==='languages')refreshQuickVoice()});
 window.speechSynthesis?.addEventListener?.('voiceschanged',()=>{if(!$('page3').classList.contains('hide'))populateVoices()});
-$('intOpenContinuous').onclick=()=>intGo('continuous');
-$('intOpenLive').onclick=()=>intGo('languages');$('intOpenNearby').onclick=()=>intGo('nearby');$('intOpenListen').onclick=()=>intGo('listening');$('intOpenSolo').onclick=()=>intGo('solo');$('oneSwap').onclick=()=>{const a=$('oneSource'),b=$('oneTarget'),v=a.value;a.value=b.value;b.value=v;applyOnePhone()};$('oneApply').onclick=()=>applyOnePhone();$('intHistory').onclick=()=>intGo('history');$('intSettings').onclick=()=>intGo('settings','voices');
+const confirmCredits=()=>window.confirm('Este modo da 2.10 pode consumir créditos das APIs comerciais. Para testes gratuitos, escolha o Laboratório 2.11. Abrir o modo antigo mesmo assim?');
+ $('intOpenFree').onclick=()=>intGo('free');
+ $('intOpenContinuous').onclick=()=>{if(confirmCredits())intGo('continuous');};
+$('intOpenLive').onclick=()=>{if(confirmCredits())intGo('languages');};$('intOpenNearby').onclick=()=>{if(confirmCredits())intGo('nearby');};$('intOpenListen').onclick=()=>{if(confirmCredits())intGo('listening');};$('intOpenSolo').onclick=()=>{if(confirmCredits())intGo('solo');};$('oneSwap').onclick=()=>{const a=$('oneSource'),b=$('oneTarget'),v=a.value;a.value=b.value;b.value=v;applyOnePhone()};$('oneApply').onclick=()=>applyOnePhone();$('intHistory').onclick=()=>intGo('history');$('intSettings').onclick=()=>intGo('settings','voices');
 $('intToConnect').onclick=()=>{const speak=$('intSpeak').value,hear=$('intHear').value;intState.data.speak=speak;intState.data.hear=hear;localStorage.setItem(INTEGRATION_KEY,JSON.stringify(intState.data));updateIntPrefs();intGo('connect')};
 $('intToTalk').onclick=()=>intGo('talk');
 $('intBack').onclick=()=>{const previous=intNavigation.pop();intGo(previous?.view||'home',previous?.settings,true)};
@@ -1015,7 +1062,10 @@ function showAdminVoiceControls(){ $('premiumAdminConfig').hidden=window.DuoAcce
 window.addEventListener('duo-access-changed',()=>{showAdminVoiceControls();updateTrustedMessage();window.DuoEleven.sync();if(step===3)populateVoices();if(intState.data&&['languages','connect','talk','nearby','listening','continuous','solo'].includes(intState.view))refreshQuickVoice();});
 showAdminVoiceControls();
 window.DuoEleven.sync();
-const previouslyCompleted=persistedIntegration();if(previouslyCompleted&&new URLSearchParams(location.search).get('inicio')!=='1')enterIntegrated(previouslyCompleted,true);
+const previouslyCompleted=persistedIntegration();if(previouslyCompleted&&new URLSearchParams(location.search).get('inicio')!=='1'){
+ enterIntegrated(previouslyCompleted,true);
+ if(new URLSearchParams(location.search).get('freeLab')==='1')intGo('free');
+}
 window.DuoAccess?.renderStatus();
  const lang=$('premiumLanguage').value;window.DuoEleven.render($('premiumVoiceList'),lang);$('premiumVoiceResults').classList.remove('integration-hidden');window.DuoVoicePicker.mount($('premiumVoiceList'),lang,$('premiumStatus'),()=>quickVoiceSample('premiumVoiceList',lang,'premiumStatus','premiumTest'));
 })();
