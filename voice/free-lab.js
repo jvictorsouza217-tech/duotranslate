@@ -149,8 +149,9 @@
  function schedulePreview(value,old){
   clearTimeout(previewTimer);const text=tidy(value),epoch=++previewEpoch;
   if(text.length<9||!canTranslate()){ui.preview.textContent=text?'Reconhecendo: '+text:'';return;}
-  const stable=stablePrefix(old,text)||text;
+  const stable=stablePrefix(old,text);
   ui.preview.textContent='Ouvindo: '+text;
+  if(!stable)return;
   previewTimer=setTimeout(()=>{if(epoch===previewEpoch)translateText(stable,epoch,true);},650);
  }
  function startRecognition(){
