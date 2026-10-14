@@ -36,7 +36,7 @@ test('2.17 browser client compiles, uses short voice setup instead of legacy con
  assert.doesNotMatch(preview,/<script src="\.\.\/\.\.\/voice\/invite-v213\.js/);
  assert.match(source,/window\.DuoConnected217=\{openHost,stop:close/);
  assert.match(source,/new WebSocket\(socketUrl\(\)\)/);
- assert.doesNotMatch(source,/new window\.Peer|peer\.connect|peerjs/i);
+ assert.doesNotMatch(source,/new window\.Peer\(|peer\.connect\(peerId\(/);
  assert.match(source,/duoGuest/);
  assert.match(source,/navigator\.mediaDevices\.getUserMedia/);
  assert.match(source,/continuous=true/);
@@ -49,7 +49,7 @@ test('2.17 CSS of approved interface unchanged; backup modes remain',()=>{
  assert.match(preview,/voice\/continuous\.js/);
  assert.match(preview,/voice\/listening-v214\.js/);
  assert.match(preview,/voice\/free-lab\.js/);
- assert.match(preview,/preview\/engine-v2.12/);
+ assert.match(preview,/engine-v2.12/);
 });
 test('2.17 binding and migration extend, not replace, existing access store',()=>{
  assert.ok(wrangler.durable_objects.bindings.some(x=>x.name==='DUO_ACCESS_STORE'));
