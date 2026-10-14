@@ -19,6 +19,7 @@ function harness(){
  };
  const spoken=[],window={
   addEventListener(){},
+  SpeechRecognition:class {},
   DuoReliable:{translate:async(original)=>({text:'translation:'+original,provider:'test'})},
   speechSynthesis:{getVoices:()=>[],cancel(){},speak(utterance){
    spoken.push(utterance.text);
