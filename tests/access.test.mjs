@@ -735,3 +735,46 @@ test('2.11 free mode fails clearly without a local translator rather than callin
  assert.match(el('freeStatus').textContent,/não está no vocabulário local/);
  assert.equal(requested,0);
 });
+
+
+test('2.11 initializes its access client without modifying the original 2.10 routing guard',async()=>{
+ const oldClient=await readFile(new URL('../access/client.js',import.meta.url),'utf8');
+ const newClient=await readFile(new URL('../access/client-v2.11.js',import.meta.url),'utf8');
+ const oldHtml=await readFile(new URL('../preview/v2.10/index.html',import.meta.url),'utf8');
+ const newHtml=await readFile(new URL('../preview/v2.11/index.html',import.meta.url),'utf8');
+ assert.match(oldClient,/if\(!\/\\\/preview\\\/v2\\\.10\\\/\?\$\/\.test\(location\.pathname\)\)return;/);
+ assert.match(newClient,/if\(!\/\\\/preview\\\/v2\\\.11\\\/\?\$\/\.test\(location\.pathname\)\)return;/);
+ assert.ok(oldHtml.includes('access/client.js?v=4'));
+ assert.ok(newHtml.includes('access/client-v2.11.js?v=1'));
+ assert.ok(newHtml.includes('Promise.resolve(window.DuoAccess?.syncName?.(currentName()))'));
+ const makeStorage=()=>{const map=new Map();return {getItem:k=>map.get(k)||null,setItem:(k,v)=>map.set(k,v),removeItem:k=>map.delete(k)};};
+ for(const route of ['/duotranslate/preview/v2.11/','/duotranslate/preview/v2.10/']){
+  const localStorage=makeStorage(),sessionStorage=makeStorage();
+  const win={fetch:async()=>{throw Error('No network during onboarding');},dispatchEvent(){},addEventListener(){}};
+  win.parent=win;
+  const context=vm.createContext({window:win,document:{getElementById:()=>null},localStorage,sessionStorage,
+   location:{pathname:route,hash:'',href:'https://example.test'+route},history:{replaceState(){}},
+   URL,URLSearchParams,AbortController,setTimeout,clearTimeout,Event});
+  vm.runInContext(newClient,context);
+  if(route.endsWith('/v2.11/')){
+   assert.ok(win.DuoAccess,'2.11 must be initialized for public onboarding');
+   await win.DuoAccess.ready;
+   await win.DuoAccess.syncName('Visitor without a login');
+  }else assert.equal(win.DuoAccess,undefined,'2.11 client must not replace 2.10 initialization');
+ }
+});
+
+test('2.11 first-screen Next advances even when access/profile synchronization is unavailable',async()=>{
+ const html=await readFile(new URL('../preview/v2.11/index.html',import.meta.url),'utf8');
+ const onclick=html.match(/\$\('next0'\)\.onclick=\(\)=>\{[^\n]*\};/);
+ assert.ok(onclick,'Next button should have an explicit onclick handler');
+ for(const access of [undefined,{syncName:async()=>{throw Error('Network timeout');}}]){
+  const cells=new Map([['uiLang',{value:'pt-BR'}],['gateName',{value:'Test'}],['next0',{onclick:null}],['gateChoice',{textContent:''}]]);
+  const steps=[];
+  const ctx=vm.createContext({window:{DuoAccess:access},$:(id)=>cells.get(id),save(){},currentName:()=> 'Test',show:n=>steps.push(n),Promise});
+  vm.runInContext(onclick[0],ctx);
+  cells.get('next0').onclick();
+  assert.deepEqual(steps,[1],'User must progress without depending on a remote profile update');
+  await new Promise(resolve=>setImmediate(resolve));
+ }
+});
