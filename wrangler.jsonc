@@ -6,9 +6,31 @@
   "workers_dev": true,
   "keep_vars": true,
   "durable_objects": {
-    "bindings": [{ "name": "DUO_ACCESS_STORE", "class_name": "DuoAccessStore" }]
+    "bindings": [
+      {
+        "name": "DUO_ACCESS_STORE",
+        "class_name": "DuoAccessStore"
+      },
+      {
+        "name": "DUO_ROOMS_217",
+        "class_name": "DuoRoom217"
+      }
+    ]
   },
-  "migrations": [{ "tag": "duo-individual-access-v1", "new_sqlite_classes": ["DuoAccessStore"] }],
+  "migrations": [
+    {
+      "tag": "duo-individual-access-v1",
+      "new_sqlite_classes": [
+        "DuoAccessStore"
+      ]
+    },
+    {
+      "tag": "duo-conversation-room-v217",
+      "new_sqlite_classes": [
+        "DuoRoom217"
+      ]
+    }
+  ],
   "ratelimits": [
     {
       "name": "AI_RATE_LIMITER",
