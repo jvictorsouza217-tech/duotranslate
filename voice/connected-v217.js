@@ -51,7 +51,7 @@ function createState(role,ticket,name,speak,hear){return {role,ticket,name,speak
 function makeLink(){
  const url=new URL('/duotranslate/preview/v2.17/',location.origin);
  url.searchParams.set('duoGuest','1');url.searchParams.set('duoRoom',s.ticket);
- url.searchParams.set('from',s.name);url.searchParams.set('speaks',s.speak);url.searchParams.set('hears',s.hear);
+ url.searchParams.set('from',s.name);url.searchParams.set('speaks',s.speak);url.searchParams.set('hears',s.counterpart||s.peer?.speaks||'fr-FR');
  return url;
 }
 function send(packet){if(s?.ws?.readyState===WebSocket.OPEN)s.ws.send(JSON.stringify(packet));}
@@ -173,10 +173,10 @@ async function openHost(){
  close();
  const defaults=stored(),host=window.DuoInviteHost?.()||{};
  language=String(defaults.ui||navigator.language||'pt').slice(0,2);if(!labels[language])language='pt';
- const speak=selected(host.speak||defaults.speak,'pt-BR'),hear=selected(host.hear||defaults.hear,'fr-FR');
+ const speak=selected(host.speak||defaults.speak,'pt-BR'),counterpart=selected(host.hear||defaults.hear,'fr-FR'),hear=speak;
  const name=String(host.name||defaults.name||'Anfitrião').trim().slice(0,40);
  fill(name,speak,hear);
- s=createState('host',randomTicket(),name,speak,hear);
+ s=createState('host',randomTicket(),name,speak,hear);s.counterpart=counterpart;
  $('duo217Join').classList.add('hide');$('duo217Copy').classList.remove('hide');$('duo217Copy').disabled=true;
  $('duo217Pause').classList.remove('hide');$('duo217Pause').textContent=t('pause');
  setStatus(t('connecting'));const permission=unlockMicrophone();connect();void premiumInvite();await permission;
@@ -185,8 +185,7 @@ async function enterGuest(){
  if(!s||s.role!=='guest')return;
  s.name=$('duo217Name').value.trim().slice(0,40)||'Convidado';
  s.speak=$('duo217Speak').value;s.hear=$('duo217Hear').value;s.voice=$('duo217Voice').value;
- if(s.speak===s.hear){setStatus('Escolha idiomas diferentes.');return;}
- if(s.voice!=='local'&&!window.DuoAccess?.active){setStatus(t('permission'));return;}
+  if(s.voice!=='local'&&!window.DuoAccess?.active){setStatus(t('permission'));return;}
  if(s.voice!=='local')window.DuoEleven?.selectVoice(s.hear,s.voice,true);
  $('duo217Join').classList.add('hide');$('duo217Pause').classList.remove('hide');$('duo217Pause').textContent=t('pause');
  const permission=unlockMicrophone();connect();await permission;
@@ -210,7 +209,7 @@ async function initGuest(){
  if(!guest||guestReady)return;guestReady=true;
  await window.DuoAccess?.ready;
  language=String(navigator.language||'fr').slice(0,2);if(!labels[language])language='fr';
- const speak=selected(params.get('hears'),'fr-FR'),hear=selected(params.get('speaks'),'pt-BR');
+ const speak=selected(params.get('hears'),'fr-FR'),hear=speak;
  fill('',speak,hear);s=createState('guest',ticket,'',speak,hear);
  $('duo217Join').classList.remove('hide');$('duo217Copy').classList.add('hide');
  $('duo217Pause').classList.add('hide');setStatus(t('join'));
