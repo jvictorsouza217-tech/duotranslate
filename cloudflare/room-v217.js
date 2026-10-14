@@ -41,7 +41,7 @@ export class DuoRoom217 {
   if(!item||!allowedTypes.has(item.type))return;
   if(item.type==='ping'){send(ws,{type:'pong',stamp:String(item.stamp||'').slice(0,50)});return;}
   if(item.type==='hello'){
-   if(!LANGS.has(item.speaks)||!LANGS.has(item.hears)||item.speaks===item.hears){
+   if(!LANGS.has(item.speaks)||!LANGS.has(item.hears)){
     send(ws,{type:'error',message:'Idiomas inválidos.'});return;
    }
    const prev=data(ws);
