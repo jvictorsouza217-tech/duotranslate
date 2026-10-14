@@ -930,3 +930,27 @@ test('2.12 reports missing room as failure instead of indefinite Aguardando',asy
  assert.equal(guest.get('duoPingBtn').disabled,true);
  assert.equal(guest.requests(),0);
 });
+
+
+test('2.13 inviter can issue a personalized one-time access link without exposing their credentials',async()=>{
+ const f=fixture(),admin=await owner(f);
+ const settings={
+  'duotranslate.access.session.v1':JSON.stringify(admin),
+  'duotranslate.premium.voice.v1':JSON.stringify({enabled:true,voices:{'fr-FR':selectedVoice,'pt-BR':selectedVoice}})
+ };
+ const host=await client(f,ACCESS_ORIGIN+'/duotranslate/preview/v2.13/',settings,null,{},'../access/client-v2.12.js');
+ assert.equal(host.win.DuoAccess.role,'admin');
+ const url=new URL(await host.win.DuoAccess.inviteGuest('ABCDEFGH',{hostName:'João Victor',hostSpeak:'pt-BR',hostHear:'fr-FR'}));
+ assert.equal(url.pathname,'/duotranslate/preview/v2.13/');
+ assert.equal(url.searchParams.get('guest'),'1');
+ assert.equal(url.searchParams.get('room'),'ABCDEFGH');
+ assert.equal(url.searchParams.get('from'),'João Victor');
+ assert.equal(url.searchParams.get('speaks'),'pt-BR');
+ assert.equal(url.searchParams.get('hears'),'fr-FR');
+ assert.match(url.hash,/^#duo-invite=[a-f0-9]{64}$/);
+ assert.ok(!url.href.includes(admin.token));
+ const guest=await client(f,url.href,{},null,{},'../access/client-v2.12.js');
+ assert.equal(guest.win.DuoAccess.role,'member');
+ assert.equal(guest.location.hash,'');
+ assert.equal(JSON.parse(guest.localStorage.getItem('duotranslate.premium.voice.v1')).voices['pt-BR'],selectedVoice);
+});
