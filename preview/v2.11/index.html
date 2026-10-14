@@ -442,7 +442,7 @@ body[data-duo-int-view="listening"] #intOnePhoneOptions .int-actions{display:non
   </div>
 </section>
 
-<script src="../engine-v2.7/phrasebook.js?v=2.11-free"></script><script src="../../voice/free-lab.js?v=1"></script><script src="../../translation/reliable.js?v=1"></script><script src="../../voice/picker.js?v=2"></script><script src="../../voice/continuous.js?v=3"></script><script src="../../voice/profile.js?v=1"></script><script src="../../access/client.js?v=4"></script><script src="../engine-v2.7/premium-voice.js?v=2.7-access-2"></script><script src="../../access/eleven-setup.js?v=2"></script><script src="../../access/users.js?v=1" defer></script>
+<script src="../engine-v2.7/phrasebook.js?v=2.11-free"></script><script src="../../voice/free-lab.js?v=1"></script><script src="../../translation/reliable.js?v=1"></script><script src="../../voice/picker.js?v=2"></script><script src="../../voice/continuous.js?v=3"></script><script src="../../voice/profile.js?v=1"></script><script src="../../access/client-v2.11.js?v=1"></script><script src="../engine-v2.7/premium-voice.js?v=2.7-access-2"></script><script src="../../access/eleven-setup.js?v=2"></script><script src="../../access/users.js?v=1" defer></script>
 <script>
 (async()=>{'use strict';
 await window.DuoAccess?.ready;
@@ -632,7 +632,7 @@ $('uiLang').addEventListener('change',()=>{if(!$('uiLang').value)return;
  $('speak').value=$('uiLang').value;
  if($('hear').value===$('speak').value)$('hear').value=$('speak').value==='pt-BR'?'fr-FR':'pt-BR';
  localUi();populateVoices();save();renderGate()});
-$('next0').onclick=()=>{if(!$('uiLang').value||!$('gateName').value.trim())return;save();window.DuoAccess.syncName?.(currentName()).catch(e=>{$('gateChoice').textContent=e.message;});show(1)};
+$('next0').onclick=()=>{if(!$('uiLang').value||!$('gateName').value.trim())return;save();try{Promise.resolve(window.DuoAccess?.syncName?.(currentName())).catch(e=>{$('gateChoice').textContent=e.message;});}catch(e){$('gateChoice').textContent=String(e.message||e);}show(1)};
 $('back1').onclick=()=>show(0);
 $('next1').onclick=()=>{show(2);renderSubstep()};
 $('back2').onclick=()=>{if(isRecording)return;if(voiceSubstep>1)setVoiceSubstep(voiceSubstep-1);else show(1)};
