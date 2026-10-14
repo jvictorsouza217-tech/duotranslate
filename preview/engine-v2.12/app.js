@@ -227,14 +227,29 @@ function useConnection(conn){
  state.conn=conn;
  conn.on('open',()=>{
   if(state.conn!==conn)return;
-  transmit({type:'hello',lang:state.language,hear:state.hearLanguage});view();notify('Celulares conectados!');
+  setConnectionPhase('handshake','Canal aberto. Esperando a confirmação dos idiomas do outro aparelho…');
+  watchdog(10000,'handshake','O canal abriu, mas os idiomas não foram confirmados em 10 segundos.');
+  transmit({type:'hello',lang:state.language,hear:state.hearLanguage});view();
+  notify('Canal WebRTC aberto. Confirmando os idiomas…');
  });
  conn.on('data',data=>{
   if(!data || typeof data!=='object' || state.conn!==conn)return;
   if(data.type==='hello'){
    if(!Object.prototype.hasOwnProperty.call(LANG,data.lang))return;
    const otherHear=Object.prototype.hasOwnProperty.call(LANG,data.hear)?data.hear:data.lang; // aparelhos ainda em v1.5
-   state.other=data.lang;state.otherHear=otherHear;view();
+   state.other=data.lang;state.otherHear=otherHear;state.handshakeReceived=true;
+   if(connected()){
+    clearTimeout(state.connectionTimer);
+    setConnectionPhase('connected','Os aparelhos confirmaram a comunicação e os idiomas. Envie agora o teste gratuito antes de ativar o microfone.');
+    notify('Comunicação entre aparelhos confirmada.');
+   }else view();
+  }else if(data.type==='duo-test' && typeof data.id==='string' && data.id.length<100){
+   if(el.pingStatus)el.pingStatus.textContent='Teste recebido do outro aparelho. Respondendo sem IA ou serviços de voz.';
+   transmit({type:'duo-test-ack',id:data.id});
+  }else if(data.type==='duo-test-ack' && data.id===state.pingId){
+   clearTimeout(state.pingTimer);state.pingId='';
+   const elapsed=Math.round(performance.now()-state.pingStarted);
+   if(el.pingStatus)el.pingStatus.textContent='Teste aprovado: ida e volta em '+elapsed+' ms. Sem tradução ou créditos de API.';
   }else if(data.type==='speech' && typeof data.translation==='string'){
    if(data.target!==state.hearLanguage)return;
    const translated=data.translation.trim().slice(0,600);
@@ -246,10 +261,17 @@ function useConnection(conn){
  });
  conn.on('close',()=>{
   if(state.conn!==conn)return;
-  state.conn=null;state.other=null;state.otherHear=null;stopMic();view();
-  if(state.room)notify('O segundo celular desconectou.',true);
+  state.conn=null;state.other=null;state.otherHear=null;stopMic();
+  if(state.room){
+   setConnectionPhase('failed','O canal WebRTC foi fechado. Tente novamente nos dois aparelhos.');
+   notify('O outro aparelho se desconectou.',true);
+  }else view();
  });
- conn.on('error',()=>notify('Falha na comunicação entre celulares.',true));
+ conn.on('error',e=>{
+  if(state.conn!==conn)return;
+  setConnectionPhase('failed','Falha no canal WebRTC: '+String(e?.message||e?.type||'erro desconhecido')+'. Tente novamente.');
+  notify('Erro de comunicação entre os aparelhos.',true);
+ });
 }
 function bubble(side,original,translation,error=false,translationMs=null){
  const empty=el.messages.querySelector('.empty-messages');
@@ -441,6 +463,8 @@ if(el.hearSelect){
 }
 el.create.addEventListener('click',createRoom);
 el.join.addEventListener('click',joinRoom);
+el.retry?.addEventListener('click',retryConnection);
+el.ping?.addEventListener('click',sendDiagnostic);
 el.code.addEventListener('input',()=>{el.code.value=normalized(el.code.value);});
 el.code.addEventListener('keydown',e=>{if(e.key==='Enter')joinRoom();});
 el.leave.addEventListener('click',exitRoom);
@@ -484,5 +508,7 @@ window.addEventListener('pagehide',()=>{
 });
 const initial=normalized(new URLSearchParams(location.search).get('room'));
 if(initial.length===8)el.code.value=initial;
+window.DuoConnectionStatus={get phase(){return state.connectionPhase;},
+ get connected(){return connected();},get message(){return state.connectionMessage;}};
 view();
 })();
