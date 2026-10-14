@@ -71,12 +71,12 @@ test('2.17 Worker blocks invalid room ticket and routes correct WebSocket withou
 });
 test('2.17 room pairs only after both hello messages and routes translated voice text',()=>{
  const {host,guest,room}=simulate();
- room.webSocketMessage(host,JSON.stringify(hello('João','pt-BR','fr-FR')));
+ room.webSocketMessage(host,JSON.stringify(hello('Host','pt-BR','pt-BR')));
  assert.equal(host.messages.at(-1).type,'waiting');
- room.webSocketMessage(guest,JSON.stringify(hello('Jérôme','fr-FR','pt-BR')));
+ room.webSocketMessage(guest,JSON.stringify(hello('Guest','fr-FR','fr-FR')));
  assert.equal(host.messages.at(-1).type,'paired');
  assert.equal(guest.messages.at(-1).type,'paired');
- assert.equal(host.messages.at(-1).peer.hears,'pt-BR');
+ assert.equal(host.messages.at(-1).peer.hears,'fr-FR');
  const spoken={type:'speech',original:'Olá, como foi o dia?',translation:'Bonjour, comment était ta journée ?',target:'fr-FR',provider:'Gemini'};
  room.webSocketMessage(host,JSON.stringify(spoken));
  assert.equal(guest.messages.at(-1).type,'speech');
@@ -86,8 +86,8 @@ test('2.17 room pairs only after both hello messages and routes translated voice
 });
 test('2.17 room rejects mismatched languages, oversized payload and third-party commands',()=>{
  const {host,guest,room}=simulate();
- room.webSocketMessage(host,JSON.stringify(hello('Host','pt-BR','fr-FR')));
- room.webSocketMessage(guest,JSON.stringify(hello('Guest','fr-FR','pt-BR')));
+ room.webSocketMessage(host,JSON.stringify(hello('Host','pt-BR','pt-BR')));
+ room.webSocketMessage(guest,JSON.stringify(hello('Guest','fr-FR','fr-FR')));
  const count=guest.messages.length;
  room.webSocketMessage(host,JSON.stringify({type:'speech',original:'olá',translation:'bonjour',target:'en-US'}));
  room.webSocketMessage(host,JSON.stringify({type:'admin',message:'grant access'}));
