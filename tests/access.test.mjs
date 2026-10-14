@@ -1067,8 +1067,8 @@ test('2.14 introduces an independent listening panel without changing approved U
  assert.ok(fresh.includes("new URL('../engine-v2.12/'+roomParam"));
  assert.ok(old.includes('access/client-v2.12.js?v=2.13'));
  assert.ok(access.includes("if(!/\\/preview\\/v2\\.14\\/?$/.test(location.pathname))return;"));
- assert.ok(ui.includes("value=\"eleven\""));
- assert.ok(ui.includes("value=\"local\""));
+ assert.ok(ui.includes('ElevenLabs · voz natural, usa créditos'));
+ assert.ok(ui.includes('Chrome Translator · local, rápido e gratuito'));
  assert.ok(!engine.includes('api.mymemory.translated.net'));
  assert.ok(!engine.includes('ELEVENLABS_API_KEY'));
  new Function(ui);new Function(engine);
