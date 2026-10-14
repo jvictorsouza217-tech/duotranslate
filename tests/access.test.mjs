@@ -1062,6 +1062,7 @@ test('2.14 introduces an independent listening panel without changing approved U
  assert.ok(fresh.includes('voice/listening-v214.js?v=1'));
  assert.ok(fresh.includes('access/client-v2.14.js?v=1'));
  assert.ok(fresh.includes("if(intState.view==='listening')window.DuoListening214?.mount("));
+ assert.ok(fresh.includes("window.DuoListening214?.mount({from:d.hear,to:d.speak})"),'Listening must default to the other language into the user's own language');
  assert.ok(fresh.includes("window.DuoListening214?.setVisible(intState.view==='listening')"));
  assert.ok(fresh.includes("$('intOpenListen').onclick=()=>intGo('listening');"));
  assert.ok(fresh.includes("new URL('../engine-v2.12/'+roomParam"));
