@@ -885,7 +885,7 @@ test('2.12 isolates a new conversational iframe while retaining 2.11 and no new 
  assert.ok(previous.includes("new URL('../engine-v2.7/'+roomParam"));
  assert.ok(engine.includes('preview/engine-v2.12/app.js'));
  assert.ok(oldEngine.includes('preview/engine-v2.7/app.js'));
- assert.ok(access.includes("if(!/\\/preview\\/v2\\.12\\/?$/.test(location.pathname))return;"));
+ assert.ok(access.includes("if(!/\\/preview\\/v2\\.1[23]\\/?$/.test(location.pathname))return;"));
  assert.ok(access.includes("new URL('/duotranslate/preview/v2.12/',location.href)"));
  assert.ok(engine.includes('id="duoPingBtn"'));
  assert.ok(app.includes("type:'duo-test'"));
