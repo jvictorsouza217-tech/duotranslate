@@ -647,3 +647,91 @@ test('2.10 selected ElevenLabs voices are not silently replaced with native voic
  assert.ok(pair.includes('Nenhuma outra voz foi utilizada.'));
  assert.ok(solo.includes("document.body.dataset.duoContext&&window.DuoPremiumVoice?.configuredFor?.(language)"));
 });
+
+
+test('2.11 adds a separate free mode without changing approved 2.10 CSS or requiring billable services',async()=>{
+ const legacy=await readFile(new URL('../preview/v2.10/index.html',import.meta.url),'utf8');
+ const fresh=await readFile(new URL('../preview/v2.11/index.html',import.meta.url),'utf8');
+ const style=text=>(text.match(/<style[^>]*>([\s\S]*?)<\/style>/)||[])[1];
+ assert.ok(style(fresh).startsWith(style(legacy)));
+ assert.ok(fresh.includes('id="intOpenFree"'));
+ assert.ok(fresh.includes('id="intFreePanel"'));
+ assert.ok(fresh.includes('../../voice/free-lab.js'));
+ assert.ok(fresh.includes('const confirmCredits='));
+ assert.ok(fresh.includes("intState.view==='free'"));
+ assert.ok(!legacy.includes('id="intOpenFree"'));
+ const ids=[...fresh.matchAll(/\bid="([^"]+)"/g)].map(m=>m[1]);assert.equal(new Set(ids).size,ids.length);
+});
+
+test('2.11 free laboratory is self-contained and has stable-prefix streaming captions',async()=>{
+ const code=await readFile(new URL('../voice/free-lab.js',import.meta.url),'utf8');
+ for(const forbidden of ['DuoAccess.fetch','DuoReliable.translate','DuoAI.translate','api.mymemory.translated.net','api.elevenlabs.io','api.openai.com']){
+  assert.ok(!code.includes(forbidden),'Unexpected commercial or remote translation path: '+forbidden);
+ }
+ const window={addEventListener(){},speechSynthesis:{getVoices:()=>[],addEventListener(){},cancel(){},speak(){}}};
+ vm.runInContext(code,vm.createContext({window,document:{},setTimeout,clearTimeout,performance}));
+ assert.equal(window.DuoFreeLab.stablePrefix('Bonjour comment','Bonjour comment ça va'),'Bonjour comment');
+ assert.equal(window.DuoFreeLab.stablePrefix('Bonjour','Bonsoir'),'');
+ assert.equal(window.DuoFreeLab.short('pt-BR'),'pt');
+ assert.equal(window.DuoFreeLab.short('zh-CN'),'zh-Hans');
+});
+
+test('2.11 local translator handles several utterances in order without any remote fetch',async()=>{
+ const code=await readFile(new URL('../voice/free-lab.js',import.meta.url),'utf8');
+ const elements=new Map(),translateCalls=[];
+ function element(id){
+  if(elements.has(id))return elements.get(id);
+  const e={id,value:'',textContent:'',children:[],handlers:{},checked:id==='freeSpeak'||id==='freeInterrupt',disabled:false,
+   addEventListener(name,fn){this.handlers[name]=fn;},click(){return this.handlers.click?.();},
+   replaceChildren(...nodes){this.children=nodes;},append(...nodes){this.children.push(...nodes);},
+   prepend(node){this.children.unshift(node);},setAttribute(){},get lastChild(){return this.children.at(-1);},
+   remove(){this.removed=true;}};
+  elements.set(id,e);return e;
+ }
+ const local={value:new Map(),getItem(k){return this.value.get(k)||null;},setItem(k,v){this.value.set(k,v);}};
+ let remoteCalls=0,spoken=0;
+ const window={crypto:{randomUUID:()=>String(Math.random())},Translator:{create:async options=>{
+  assert.equal(options.sourceLanguage,'pt');assert.equal(options.targetLanguage,'fr');
+  return {translate:async original=>{translateCalls.push(original);await new Promise(r=>setImmediate(r));return 'FR: '+original;},destroy(){}};
+ }},DuoPhrasebook:{translate:()=>null},speechSynthesis:{getVoices:()=>[{voiceURI:'v1',lang:'fr-FR'}],addEventListener(){},cancel(){},speak(){spoken++;}},addEventListener(){}};
+ const document={getElementById:element,createElement:tag=>element(tag+'-new-'+Math.random())};
+ const context=vm.createContext({window,document,localStorage:local,performance,setTimeout,clearTimeout,
+  SpeechSynthesisUtterance:class {constructor(text){this.text=text;}},fetch(){remoteCalls++;throw Error('Remote fetch forbidden');}});
+ vm.runInContext(code,context);window.DuoFreeLab.mount();window.DuoFreeLab.setVisible(true);
+ await element('freePrepare').click();
+ assert.equal(window.DuoFreeLab.state.prepared,true);
+ element('freeSpeak').checked=false;
+ element('freeInput').value='Primeira frase';element('freeManual').click();
+ element('freeInput').value='Segunda frase';element('freeManual').click();
+ await new Promise(r=>setTimeout(r,40));
+ assert.deepEqual(translateCalls,['Primeira frase','Segunda frase']);
+ assert.equal(element('freeResults').children.length,2);
+ assert.equal(remoteCalls,0);assert.equal(spoken,0);
+ assert.equal(JSON.parse(local.getItem('duotranslate.local.history.v1')).length,2);
+ assert.match(element('freeTranslated').textContent,/Segunda frase/);
+ window.DuoFreeLab.setVisible(false);
+ assert.equal(window.DuoFreeLab.state.active,false);
+});
+
+test('2.11 free mode fails clearly without a local translator rather than calling an external fallback',async()=>{
+ const code=await readFile(new URL('../voice/free-lab.js',import.meta.url),'utf8');
+ const elements=new Map();
+ function el(id){
+  if(elements.has(id))return elements.get(id);
+  const e={value:'',textContent:'',children:[],handlers:{},checked:false,addEventListener(n,f){this.handlers[n]=f;},
+   click(){return this.handlers.click?.();},append(...a){this.children.push(...a);},
+   replaceChildren(...a){this.children=a;},prepend(x){this.children.unshift(x);},setAttribute(){}};
+  elements.set(id,e);return e;
+ }
+ let requested=0;
+ const window={speechSynthesis:{getVoices:()=>[],addEventListener(){},cancel(){}},addEventListener(){}};
+ const document={getElementById:el,createElement:()=>({value:'',textContent:''})};
+ vm.runInContext(code,vm.createContext({window,document,localStorage:{getItem:()=>null},performance,setTimeout,clearTimeout,
+  fetch(){requested++;throw Error('No paid provider allowed');}}));
+ window.DuoFreeLab.mount();window.DuoFreeLab.setVisible(true);
+ await el('freePrepare').click();assert.match(el('freeCompat').textContent,/indisponível/);
+ el('freeInput').value='Frase livre sem modelo';el('freeManual').click();
+ await new Promise(r=>setImmediate(r));
+ assert.match(el('freeStatus').textContent,/não está no vocabulário local/);
+ assert.equal(requested,0);
+});
