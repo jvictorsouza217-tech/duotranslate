@@ -9,7 +9,8 @@ const el = {
  leave: $('leaveBtn'), listen: $('listenBtn'), listenStatus: $('listenStatus'),
  micBadge: $('micBadge'), micOrb: $('micOrb'), audio: $('testAudioBtn'),
  form: $('textForm'), input: $('textInput'), send: $('sendBtn'),
- messages: $('messages'), clear: $('clearBtn'), toast: $('toast')
+ messages: $('messages'), clear: $('clearBtn'), toast: $('toast'),
+ connectionPhase:$('duoConnectPhase'),connectionDetail:$('duoConnectDetail'),retry:$('duoRetryBtn'),ping:$('duoPingBtn'),pingStatus:$('duoPingStatus')
 };
 const LANG = window.DuoLanguages || {};
 const Recognition = window.SpeechRecognition || window.webkitSpeechRecognition;
@@ -17,7 +18,9 @@ const alphabet = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
 const state = {
  language:'pt-BR', hearLanguage:'fr-FR', other:null, otherHear:null, peer:null, conn:null, room:'', host:false,
  listen:false, recognizing:false, instance:null, speaking:false, queue:[],
- restart:null, toastTimer:null, transQueue:Promise.resolve(), session:0, netErrors:0
+ restart:null, toastTimer:null, transQueue:Promise.resolve(), session:0, netErrors:0,
+ connectionPhase:'idle',connectionMessage:'',connectionTimer:null,pingTimer:null,
+ pingId:'',pingStarted:0,peerReady:false,handshakeReceived:false
 };
 function connected(){return !!(state.conn && state.conn.open && state.other && state.otherHear);}
 function status(s){el.listenStatus.textContent=window.DuoI18n?.localizeStatus(s)||s;}
@@ -27,6 +30,63 @@ function notify(s, error=false){
  el.toast.classList.toggle('error',error);
  el.toast.classList.remove('hidden');
  state.toastTimer=setTimeout(()=>el.toast.classList.add('hidden'),5000);
+}
+function renderDiagnostics(){
+ const phase=connected()?'connected':state.connectionPhase;
+ const heading={
+  idle:'Nenhuma conexão iniciada',
+  registering:'1/3 · Registrando sala no servidor',
+  waiting:'1/3 · Sala pronta — aguardando a outra pessoa',
+  searching:'1/3 · Localizando a sala',
+  connecting:'2/3 · Abrindo canal entre aparelhos',
+  handshake:'3/3 · Confirmando idiomas e comunicação',
+  connected:'Conectados · comunicação confirmada',
+  reconnecting:'Conexão interrompida · tentando recuperar',
+  failed:'Falha na conexão',
+ }[phase]||'Verificando conexão';
+ if(el.connectionPhase)el.connectionPhase.textContent=heading;
+ if(el.connectionDetail)el.connectionDetail.textContent=state.connectionMessage||
+  'O segundo aparelho ainda não respondeu.';
+ if(el.ping)el.ping.disabled=!connected();
+ if(el.retry){el.retry.disabled=!state.room||connected();el.retry.textContent=state.host?'Recriar sala':'Tentar novamente';}
+}
+function clearConnectionTimers(){
+ clearTimeout(state.connectionTimer);clearTimeout(state.pingTimer);
+ state.connectionTimer=null;state.pingTimer=null;
+}
+function setConnectionPhase(phase,message){
+ state.connectionPhase=phase;state.connectionMessage=message;
+ renderDiagnostics();
+ if(state.room)view();
+}
+function watchdog(delay,phase,errorMessage){
+ clearTimeout(state.connectionTimer);
+ const token=state.session;
+ state.connectionTimer=setTimeout(()=>{
+  if(state.session!==token||connected()||state.connectionPhase!==phase)return;
+  setConnectionPhase('failed',errorMessage+' Tente novamente; se você criou a sala, gere um novo código.');
+ },delay);
+}
+function retryConnection(){
+ if(!state.room)return;
+ if(state.host){createRoom();return;}
+ el.code.value=state.room;joinRoom();
+}
+function sendDiagnostic(){
+ if(!connected())return;
+ clearTimeout(state.pingTimer);
+ const token=state.session,identifier=String(Date.now())+'-'+Math.random().toString(36).slice(2,9);
+ state.pingId=identifier;state.pingStarted=performance.now();
+ if(el.pingStatus)el.pingStatus.textContent='Teste enviado. Aguardando confirmação do outro aparelho…';
+ if(!transmit({type:'duo-test',id:identifier})){
+  if(el.pingStatus)el.pingStatus.textContent='Não foi possível enviar o teste pelo canal.';
+  return;
+ }
+ state.pingTimer=setTimeout(()=>{
+  if(state.session!==token||state.pingId!==identifier)return;
+  state.pingId='';
+  if(el.pingStatus)el.pingStatus.textContent='Teste sem resposta após 8 segundos. O canal pode estar bloqueado.';
+ },8000);
 }
 function view(){
  const inRoom=!!state.room, ok=connected();
@@ -49,7 +109,8 @@ function view(){
  el.connection.replaceChildren();
  const dot=document.createElement('span');
  dot.className='state-dot';
- el.connection.append(dot,document.createTextNode(ok?'Conectados':'Aguardando'));
+ el.connection.append(dot,document.createTextNode(ok?'Conectados':state.connectionPhase==='failed'?'Falha':state.connectionPhase==='waiting'?'Aguardando':state.connectionPhase==='reconnecting'?'Reconectando':'Conectando'));
+ renderDiagnostics();
  if(inRoom){
   el.roomCode.textContent=state.room;
   el.roomLabel.textContent=state.host?'Código da sua sala':'Sala conectada';
@@ -86,8 +147,10 @@ function haltMic(){
 }
 function stopMic(){state.listen=false;haltMic();view();}
 function exitRoom(){
- stopMic();state.session++;
+ stopMic();state.session++;clearConnectionTimers();
  state.room='';state.other=null;state.otherHear=null;state.host=false;
+ state.peerReady=false;state.handshakeReceived=false;state.connectionPhase='idle';
+ state.connectionMessage='';state.pingId='';state.pingStarted=0;
  state.queue.length=0;state.speaking=false;
  try{window.speechSynthesis && window.speechSynthesis.cancel();}catch(e){}
  try{state.conn && state.conn.close();}catch(e){}
