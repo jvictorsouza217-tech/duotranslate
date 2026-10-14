@@ -14,7 +14,7 @@
  let ui=null,mounted=false,visible=false,listening=false,recognition=null,userStopped=true,run=0;
  let restartCount=0,restartTimer=null,localTranslator=null,localPair='',prepareRun=0;
  let finalQueue=[],draining=false,playingAudio=null,pendingFetch=null,voiceURI='',partialTimer=null,partialVersion=0;
- let recognitionStartedAt=0,firstInterimAt=0,lastInterim='',historyCount=0,voiceOptionsLoaded=false;
+ let recognitionStartedAt=0,firstInterimAt=0,lastInterim='',historyCount=0,voiceOptionsLoaded=false,cancelPlayback=null;
  const pair=()=>SHORT(ui.from.value)+'>'+SHORT(ui.to.value);
  const status=x=>{if(ui)ui.status.textContent=x;};
  const info=x=>{if(ui)ui.info.textContent=x;};
@@ -37,6 +37,8 @@
  function clearPartial(){clearTimeout(partialTimer);partialTimer=null;++partialVersion;if(ui)ui.partial.textContent='';}
  function stopAudio(){
   pendingFetch?.abort();pendingFetch=null;
+  const cancel=cancelPlayback;cancelPlayback=null;
+  if(cancel)try{cancel();}catch(e){}
   if(playingAudio){try{playingAudio.pause();playingAudio.currentTime=0;}catch(e){}playingAudio=null;}
   try{window.speechSynthesis?.cancel();}catch(e){}
  }
@@ -165,7 +167,8 @@
    if(voice)u.voice=voice;
    const timeout=setTimeout(()=>{synth.cancel();reject(Error('A voz do dispositivo não terminou a reprodução.'));},65000);
    let settled=false;
-   const end=(error)=>{if(settled)return;settled=true;clearTimeout(timeout);error?reject(error):resolve();};
+   const end=(error)=>{if(settled)return;settled=true;clearTimeout(timeout);cancelPlayback=null;error?reject(error):resolve();};
+   cancelPlayback=()=>end(Error('Reprodução interrompida.'));
    u.onstart=()=>{if(run===token)onStarted();};
    u.onend=()=>end();u.onerror=e=>end(Error('Voz do dispositivo falhou: '+String(e.error||'erro')));
    try{synth.speak(u);}catch(e){end(e);}
@@ -198,7 +201,8 @@
   try{
    await new Promise((resolve,reject)=>{
     let finished=false;
-    const end=(error)=>{if(finished)return;finished=true;error?reject(error):resolve();};
+    const end=(error)=>{if(finished)return;finished=true;cancelPlayback=null;error?reject(error):resolve();};
+    cancelPlayback=()=>end(Error('Reprodução interrompida.'));
     audio.onplaying=()=>{if(run===token)onStarted();};
     audio.onended=()=>end();
     audio.onerror=()=>end(Error('O áudio ElevenLabs não pôde ser reproduzido.'));
@@ -251,6 +255,7 @@
    }
    const translationMs=Math.round(clock()-started);
    ui.translation.textContent=translated;
+   ui.metrics.textContent='Tradução: '+translationMs+' ms'+(item.sttMs===null?'':' · Primeira parcial → frase final: '+Math.round(item.sttMs)+' ms')+' · Áudio aguardando início';
    appendResult(item.text,translated,provider,'');
    record(item.text,translated,provider,translationMs,'',{speechToTextMs:item.sttMs,output:audioChoice});
    const ttsAt=clock(),startFromFirstInterim=item.sttMs===null?null:item.seenAt-item.sttMs;
@@ -275,7 +280,7 @@
     status('Texto traduzido, mas a voz '+(audioChoice==='eleven'?'ElevenLabs':'do dispositivo')+' falhou: '+message+'. Nenhuma troca automática de voz.');
     ui.metrics.textContent='Tradução: '+translationMs+' ms · Falha de áudio: '+message;
    }
-  }}finally{draining=false;}
+  }}finally{draining=false;if(finalQueue.length)void drain();}
  }
  function stableWord(a,b){
   if(window.DuoFreeLab?.stablePrefix)return window.DuoFreeLab.stablePrefix(a,b);
