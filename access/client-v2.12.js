@@ -170,6 +170,20 @@ async function invite(room,options={}) {
  }
  return url.href;
 }
+async function inviteGuest(room,options={}) {
+ await access.ready;
+ if(!/^[A-HJ-NP-Z2-9]{8}$/.test(String(room||'')))throw new Error('Crie uma sala válida antes de compartilhar o convite.');
+ if(session?.user?.role!=='admin')throw new Error('Para compartilhar a ElevenLabs com convidados, ative o acesso de administrador neste aparelho.');
+ const invited=await invite(room,{label:'Convidado',expiresInHours:24});
+ const url=new URL(invited);
+ url.pathname='/duotranslate/preview/v2.13/';
+ url.searchParams.set('guest','1');
+ url.searchParams.set('from',String(options.hostName||session.user.label||'Anfitrião').trim().slice(0,60));
+ const languages=['pt-BR','fr-FR','en-US','es-ES','it-IT','de-DE','ar-SA','zh-CN','nl-NL','pl-PL','ro-RO','uk-UA','ru-RU','tr-TR'];
+ url.searchParams.set('speaks',languages.includes(options.hostSpeak)?options.hostSpeak:'pt-BR');
+ url.searchParams.set('hears',languages.includes(options.hostHear)?options.hostHear:'fr-FR');
+ return url.href;
+}
 async function copyInvite(room,options={}) {
  const link=invite(room,options);
  try {
@@ -179,7 +193,7 @@ async function copyInvite(room,options={}) {
   return true;
  }catch(e){const value=await link;window.prompt('Copie este convite individual para compartilhar:',value);return false;}
 }
-const access={fetch:signedFetch,invite,renderStatus,
+const access={fetch:signedFetch,invite,inviteGuest,renderStatus,
  configure,copyInvite,
  openRealtime(language){if(!session?.token)throw new Error('Ative seu acesso individual em Configurações antes de iniciar.');const url=new URL(VOICE+'/realtime');url.protocol='wss:';url.searchParams.set('language',language.slice(0,2));return new WebSocket(url,['duo-v1','duo-access-'+session.token]);},
  async syncName(name){await access.ready;if(!session||session.user.label===name)return;const value=await call('/access/profile',{name});saveSession({...session,user:value.user});},
