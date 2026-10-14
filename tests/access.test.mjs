@@ -179,7 +179,7 @@ test('unauthorized origins and missing access bindings fail closed',async()=>{
 function browserStore(initial={}) {
  const values=new Map(Object.entries(initial));return {getItem:k=>values.get(k)||null,setItem:(k,v)=>values.set(k,String(v)),removeItem:k=>values.delete(k),values};
 }
-async function client(f,href,initial={},top=null,tabInitial={}) {
+async function client(f,href,initial={},top=null,tabInitial={},scriptPath='../access/client.js') {
  const localStorage=browserStore(initial),sessionStorage=browserStore(tabInitial),requests=[];
  const location={href,pathname:new URL(href).pathname,hash:new URL(href).hash};
  const document={getElementById:()=>null,addEventListener:()=>{}};
@@ -194,7 +194,7 @@ async function client(f,href,initial={},top=null,tabInitial={}) {
  const context=vm.createContext({window:win,localStorage,sessionStorage,location,document,
   history:{replaceState:(_a,_b,url)=>{location.href=url;location.hash=new URL(url).hash;}},
   Headers,Request,URL,URLSearchParams,AbortController,Blob,Event,setTimeout,clearTimeout,queueMicrotask});
- vm.runInContext(await readFile(new URL('../access/client.js',import.meta.url),'utf8'),context);
+ vm.runInContext(await readFile(new URL(scriptPath,import.meta.url),'utf8'),context);
  await win.DuoAccess?.ready;
  return {win,localStorage,sessionStorage,location,requests,context,document};
 }
@@ -885,7 +885,7 @@ test('2.12 isolates a new conversational iframe while retaining 2.11 and no new 
  assert.ok(previous.includes("new URL('../engine-v2.7/'+roomParam"));
  assert.ok(engine.includes('preview/engine-v2.12/app.js'));
  assert.ok(oldEngine.includes('preview/engine-v2.7/app.js'));
- assert.ok(access.includes("if(!/\\/preview\\/v2\\.12\\/?$/.test(location.pathname))return;"));
+ assert.ok(access.includes("if(!/\\/preview\\/v2\\.1[23]\\/?$/.test(location.pathname))return;"));
  assert.ok(access.includes("new URL('/duotranslate/preview/v2.12/',location.href)"));
  assert.ok(engine.includes('id="duoPingBtn"'));
  assert.ok(app.includes("type:'duo-test'"));
@@ -929,4 +929,70 @@ test('2.12 reports missing room as failure instead of indefinite Aguardando',asy
  assert.equal(guest.get('duoRetryBtn').disabled,false);
  assert.equal(guest.get('duoPingBtn').disabled,true);
  assert.equal(guest.requests(),0);
+});
+
+
+test('2.13 inviter can issue a personalized one-time access link without exposing their credentials',async()=>{
+ const f=fixture(),admin=await owner(f);
+ const settings={
+  'duotranslate.access.session.v1':JSON.stringify(admin),
+  'duotranslate.premium.voice.v1':JSON.stringify({enabled:true,voices:{'fr-FR':selectedVoice,'pt-BR':selectedVoice}})
+ };
+ const host=await client(f,ACCESS_ORIGIN+'/duotranslate/preview/v2.13/',settings,null,{},'../access/client-v2.12.js');
+ assert.equal(host.win.DuoAccess.role,'admin');
+ const url=new URL(await host.win.DuoAccess.inviteGuest('ABCDEFGH',{hostName:'João Victor',hostSpeak:'pt-BR',hostHear:'fr-FR'}));
+ assert.equal(url.pathname,'/duotranslate/preview/v2.13/');
+ assert.equal(url.searchParams.get('guest'),'1');
+ assert.equal(url.searchParams.get('room'),'ABCDEFGH');
+ assert.equal(url.searchParams.get('from'),'João Victor');
+ assert.equal(url.searchParams.get('speaks'),'pt-BR');
+ assert.equal(url.searchParams.get('hears'),'fr-FR');
+ assert.match(url.hash,/^#duo-invite=[a-f0-9]{64}$/);
+ assert.ok(!url.href.includes(admin.token));
+ const guest=await client(f,url.href,{},null,{},'../access/client-v2.12.js');
+ assert.equal(guest.win.DuoAccess.role,'member');
+ assert.equal(guest.location.hash,'');
+ assert.equal(JSON.parse(guest.localStorage.getItem('duotranslate.premium.voice.v1')).voices['pt-BR'],selectedVoice);
+});
+
+
+test('2.13 guests use the existing ElevenLabs stream securely and cannot issue new invitations',async()=>{
+ const f=fixture(),{access}=await member(f);
+ const guest=await client(f,ACCESS_ORIGIN+'/duotranslate/preview/v2.13/',{
+  'duotranslate.access.session.v1':JSON.stringify(access)
+ },null,{},'../access/client-v2.12.js');
+ assert.equal(guest.win.DuoAccess.role,'member');
+ await assert.rejects(guest.win.DuoAccess.inviteGuest('ABCDEFGH',{}),/administrador/);
+ const anonymous=await client(f,ACCESS_ORIGIN+'/duotranslate/preview/v2.13/',{},null,{},'../access/client-v2.12.js');
+ await assert.rejects(anonymous.win.DuoAccess.inviteGuest('ABCDEFGH',{}),/administrador/);
+ f.voice.STREAM_VOICE_LIMITER={limit:async()=>({success:true})};
+ await withProviders(async calls=>{
+  const resp=await guest.win.DuoAccess.fetch(ACCESS_SERVICES.voice+'/stream-tts',{
+   method:'POST',headers:{'Content-Type':'application/json'},
+   body:JSON.stringify({text:'Bonjour',lang:'fr-FR',voiceId:selectedVoice})});
+  assert.equal(resp.status,200);
+  assert.ok(calls.some(c=>c.url.includes('/text-to-speech/')));
+  assert.equal(guest.requests.at(-1).headers.has('X-Duo-Pin'),false);
+  assert.ok(guest.requests.at(-1).headers.has('Authorization'));
+ });
+});
+
+
+test('2.13 guest flow preserves approved layout, skips full onboarding and joins the invited room',async()=>{
+ const old=await readFile(new URL('../preview/v2.12/index.html',import.meta.url),'utf8');
+ const fresh=await readFile(new URL('../preview/v2.13/index.html',import.meta.url),'utf8');
+ const helper=await readFile(new URL('../voice/invite-v213.js',import.meta.url),'utf8');
+ const style=text=>(text.match(/<style[^>]*>([\s\S]*?)<\/style>/)||[])[1];
+ assert.equal(style(fresh),style(old));
+ assert.ok(fresh.includes('voice/invite-v213.js?v=1'));
+ assert.ok(fresh.includes("const quickGuest=new URLSearchParams"));
+ assert.ok(fresh.includes("window.DuoGuestEnter=data=>enterIntegrated(data)"));
+ assert.ok(fresh.includes("window.DuoGuestInvites?.onFrameReady?.(doc)"));
+ assert.ok(helper.includes("window.DuoAccess.inviteGuest(code"));
+ assert.ok(helper.includes("window.DuoEleven?.selectVoice(hear,voice.slice(7),true)"));
+ assert.ok(helper.includes("input.value=room;join.click()"));
+ assert.ok(helper.includes("window.DuoGuestEnter({complete:true"));
+ assert.ok(!old.includes('voice/invite-v213.js'));
+ assert.ok(!helper.includes('ELEVENLABS_API_KEY'));
+ new Function(helper);
 });
