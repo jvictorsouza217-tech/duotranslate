@@ -144,7 +144,7 @@ function renderStatus(doc=document) {
  const member=session?.user?.role==='member';
  for(const id of ['premiumUrl','premiumPin','aiWorkerUrl','aiWorkerPin']) {
   const field=doc.getElementById(id);if(field){
-   field.readOnly=member;
+   field.readOnly=member && id!=='aiWorkerPin';
    if(id.endsWith('Url')&&!field.value)field.value=id==='premiumUrl'?VOICE:API;
    if(id.endsWith('Pin')&&!field.value)field.value=get(sessionStorage,id==='premiumPin'?VOICE_PIN:AI_PIN);
   }
