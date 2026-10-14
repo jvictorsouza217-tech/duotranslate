@@ -199,7 +199,7 @@ try {
   return;
  }
 }catch(e){}
-if(!/\/preview\/v2\.12\/?$/.test(location.pathname))return;
+if(!/\/preview\/v2\.1[23]\/?$/.test(location.pathname))return;
 window.DuoAccess=access;
 access.ready=initialize().catch(()=>{error='Não foi possível conferir seu acesso. Tente novamente.';});
 })();
