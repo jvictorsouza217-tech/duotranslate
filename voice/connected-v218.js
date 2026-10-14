@@ -159,9 +159,14 @@ async function translate(original){
 function localSpeech(text){
  return new Promise((resolve,reject)=>{
   if(!window.speechSynthesis||!window.SpeechSynthesisUtterance){reject(Error('Voz do dispositivo indisponível'));return;}
-  const u=new SpeechSynthesisUtterance(text);u.lang=s.hear;u.rate=1;
-  const voices=window.speechSynthesis.getVoices(),v=voices.find(x=>x.lang===s.hear)||voices.find(x=>x.lang?.slice(0,2)===s.hear.slice(0,2));if(v)u.voice=v;
-  u.onend=resolve;u.onerror=e=>reject(Error(e.error||'Falha na voz'));window.speechSynthesis.speak(u);
+  const session=s;if(!session){reject(Error('Conversa encerrada'));return;}
+  const u=new window.SpeechSynthesisUtterance(text);u.lang=session.hear;u.rate=1;
+  const voices=window.speechSynthesis.getVoices(),v=voices.find(x=>x.lang===session.hear)||voices.find(x=>x.lang?.slice(0,2)===session.hear.slice(0,2));if(v)u.voice=v;
+  let done=false;
+  const finish=error=>{if(done)return;done=true;clearTimeout(watchdog);error?reject(error):resolve();};
+  const watchdog=setTimeout(()=>{try{window.speechSynthesis.cancel();}catch{}finish(Error('A voz do aparelho excedeu 45 segundos.'));},45000);
+  u.onend=()=>finish();u.onerror=e=>finish(Error(e.error||'Falha na voz'));
+  try{window.speechSynthesis.speak(u);}catch(e){finish(e);}
  });
 }
 async function premiumSpeech(text){
@@ -236,7 +241,7 @@ function close(){
  const previous=s;s=null;
  if(previous){previous.active=false;clearTimeout(previous.restart);clearTimeout(previous.reconnect);clearInterval(previous.heartbeat);
   try{previous.rec?.abort();}catch{}try{previous.ws?.close(1000,'Closed');}catch{}
-  try{previous.sound?.stop();}catch{}try{previous.audio?.close();}catch{}
+  try{previous.sound?.stop();}catch{}try{window.speechSynthesis?.cancel();}catch{}try{previous.audio?.close();}catch{}
  }
  if(panel){panel.hidden=true;$('duo217Messages').replaceChildren();
   $('duo217Join').classList.remove('hide');$('duo217Copy').classList.add('hide');$('duo217Pause').classList.add('hide');}
@@ -253,6 +258,8 @@ async function initGuest(){
  void loadVoices(hear);
 }
 window.DuoConnected217={openHost,stop:close,get active(){return !!s?.active;}};
+document.addEventListener('visibilitychange',()=>{if(!s)return;if(document.hidden)haltRecognition();else if(s.paired&&s.permission&&!s.paused)setTimeout(listen,300);});
+window.addEventListener('pagehide',()=>{if(s)close();});
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',()=>{void initGuest();},{once:true});
 else void initGuest();
 })();
