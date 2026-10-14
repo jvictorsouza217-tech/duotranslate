@@ -954,3 +954,25 @@ test('2.13 inviter can issue a personalized one-time access link without exposin
  assert.equal(guest.location.hash,'');
  assert.equal(JSON.parse(guest.localStorage.getItem('duotranslate.premium.voice.v1')).voices['pt-BR'],selectedVoice);
 });
+
+
+test('2.13 guests use the existing ElevenLabs stream securely and cannot issue new invitations',async()=>{
+ const f=fixture(),{access}=await member(f);
+ const guest=await client(f,ACCESS_ORIGIN+'/duotranslate/preview/v2.13/',{
+  'duotranslate.access.session.v1':JSON.stringify(access)
+ },null,{},'../access/client-v2.12.js');
+ assert.equal(guest.win.DuoAccess.role,'member');
+ await assert.rejects(guest.win.DuoAccess.inviteGuest('ABCDEFGH',{}),/administrador/);
+ const anonymous=await client(f,ACCESS_ORIGIN+'/duotranslate/preview/v2.13/',{},null,{},'../access/client-v2.12.js');
+ await assert.rejects(anonymous.win.DuoAccess.inviteGuest('ABCDEFGH',{}),/administrador/);
+ f.voice.STREAM_VOICE_LIMITER={limit:async()=>({success:true})};
+ await withProviders(async calls=>{
+  const resp=await guest.win.DuoAccess.fetch(ACCESS_SERVICES.voice+'/stream-tts',{
+   method:'POST',headers:{'Content-Type':'application/json'},
+   body:JSON.stringify({text:'Bonjour',lang:'fr-FR',voiceId:selectedVoice})});
+  assert.equal(resp.status,200);
+  assert.ok(calls.some(c=>c.url.includes('/text-to-speech/')));
+  assert.equal(guest.requests.at(-1).headers.has('X-Duo-Pin'),false);
+  assert.ok(guest.requests.at(-1).headers.has('Authorization'));
+ });
+});
