@@ -42,7 +42,8 @@
  function setVisible(value){const wasVisible=visible;visible=!!value;if(wasVisible&&!visible)stop('');}
  function voices(){
   const selected=voiceURI||ui.voice.value;
-  const list=(window.speechSynthesis?.getVoices?.()||[]);
+  const all=(window.speechSynthesis?.getVoices?.()||[]);
+  const list=all.filter(v=>short(v.lang)===short(ui.to.value));
   ui.voice.replaceChildren();
   const placeholder=document.createElement('option');placeholder.value='';placeholder.textContent='Voz padrão do navegador';ui.voice.append(placeholder);
   for(const v of list){const opt=document.createElement('option');opt.value=v.voiceURI;opt.textContent=v.name+' · '+v.lang;ui.voice.append(opt);}
@@ -219,7 +220,7 @@
   ui.input.addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();finalSentence(ui.input.value);}});
   for(const node of [ui.from,ui.to])node.addEventListener('change',()=>{
    stop('Idiomas alterados. Prepare novamente o motor de tradução local.');
-   destroyTranslator();finalQueue=[];report('Par de idiomas alterado. Clique em Preparar tradução local.');
+   destroyTranslator();finalQueue=[];voiceURI='';voices();report('Par de idiomas alterado. Clique em Preparar tradução local.');
    ui.original.textContent='';ui.translated.textContent='';ui.preview.textContent='';
   });
   ui.voice.addEventListener('change',()=>{voiceURI=ui.voice.value;});
