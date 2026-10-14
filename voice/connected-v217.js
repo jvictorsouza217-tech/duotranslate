@@ -87,11 +87,15 @@ function display(original,translation,mine){
 async function unlockMicrophone(){
  const session=s;if(!session)return;
  if(!window.SpeechRecognition&&!window.webkitSpeechRecognition){setStatus('Reconhecimento de fala não disponível neste navegador. Teste Chrome atualizado.');return;}
+ let media;
  try{
-  if(window.AudioContext||window.webkitAudioContext){session.audio=new (window.AudioContext||window.webkitAudioContext)();await session.audio.resume();}
-  const media=await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:true,noiseSuppression:true}});
+  if(window.AudioContext||window.webkitAudioContext)session.audio=new (window.AudioContext||window.webkitAudioContext)();
+  // Request microphone permission inside the real click gesture, without an intervening await.
+  const permission=navigator.mediaDevices.getUserMedia({audio:{echoCancellation:true,noiseSuppression:true}});
+  const resumed=session.audio?session.audio.resume().catch(()=>{}):Promise.resolve();
+  media=await permission;await resumed;
   media.getTracks().forEach(track=>track.stop());session.permission=true;listen();
- }catch(e){session.permission=false;setStatus(t('denied')+' '+String(e.message||e).slice(0,60));}
+ }catch(e){media?.getTracks().forEach(track=>track.stop());session.permission=false;setStatus(t('denied')+' '+String(e.message||e).slice(0,60));}
 }
 function haltRecognition(){if(!s)return;clearTimeout(s.restart);const r=s.rec;s.rec=null;try{r?.abort();}catch{}}
 function listen(){
