@@ -670,7 +670,7 @@ test('2.11 free laboratory is self-contained and has stable-prefix streaming cap
  }
  const window={addEventListener(){},speechSynthesis:{getVoices:()=>[],addEventListener(){},cancel(){},speak(){}}};
  vm.runInContext(code,vm.createContext({window,document:{},setTimeout,clearTimeout,performance}));
- assert.equal(window.DuoFreeLab.stablePrefix('Bonjour comment','Bonjour comment ça va'),'Bonjour');
+ assert.equal(window.DuoFreeLab.stablePrefix('Bonjour comment','Bonjour comment ça va'),'Bonjour comment');
  assert.equal(window.DuoFreeLab.stablePrefix('Bonjour','Bonsoir'),'');
  assert.equal(window.DuoFreeLab.short('pt-BR'),'pt');
  assert.equal(window.DuoFreeLab.short('zh-CN'),'zh-Hans');
