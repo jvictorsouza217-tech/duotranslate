@@ -1151,3 +1151,41 @@ test('2.14 ElevenLabs success reports selected voice and records actual playback
  assert.equal(items[0].duo214.audioStatus,'started');
  assert.equal(items[0].error,'');
 });
+
+
+test('2.14 access starts correctly in new browsers and creates only v2.14 guest invitations',async()=>{
+ const f=fixture(),admin=await owner(f),script='../access/client-v2.14.js';
+ const empty=await client(f,ACCESS_ORIGIN+'/duotranslate/preview/v2.14/',{},null,{},script);
+ assert.ok(empty.win.DuoAccess,'2.14 access script must initialize the new route');
+ await empty.win.DuoAccess.ready;
+ assert.equal(empty.win.DuoAccess.active,false);
+ const prior=await client(f,ACCESS_ORIGIN+'/duotranslate/preview/v2.13/',{},null,{},script);
+ assert.equal(prior.win.DuoAccess,undefined,'Version 2.14 must not overwrite the older access script');
+ const ownerClient=await client(f,ACCESS_ORIGIN+'/duotranslate/preview/v2.14/',{
+  'duotranslate.access.session.v1':JSON.stringify(admin),
+  'duotranslate.premium.voice.v1':JSON.stringify({enabled:true,voices:{'fr-FR':selectedVoice}})
+ },null,{},script);
+ const url=new URL(await ownerClient.win.DuoAccess.inviteGuest('ABCDEFGH',{hostName:'João',hostSpeak:'pt-BR',hostHear:'fr-FR'}));
+ assert.equal(url.pathname,'/duotranslate/preview/v2.14/');
+ assert.equal(url.searchParams.get('room'),'ABCDEFGH');
+ assert.equal(url.searchParams.get('from'),'João');
+ const invited=await client(f,url.href,{},null,{},script);
+ assert.equal(invited.win.DuoAccess.role,'member');
+ assert.equal(invited.location.hash,'');
+});
+
+test('2.14 selected current engine uses explicit Gemini/MyMemory path, not local Chrome translation',async()=>{
+ const code=await readFile(new URL('../voice/listening-v214.js',import.meta.url),'utf8');
+ const c=makeListen214Browser(code,{translator:true});
+ c.get('duoListen214Engine').value='existing';
+ c.get('duoListen214Engine').change();
+ c.get('duoListen214ManualText').value='Isto é um teste do motor atual';
+ c.get('duoListen214Manual').click();
+ await new Promise(r=>setTimeout(r,35));
+ assert.equal(c.translatorCalls.length,0);
+ assert.equal(c.apiCalls.length,0,'Mock current engine does not make network requests');
+ assert.equal(c.get('duoListen214Translation').textContent,'Gemini: Isto é um teste do motor atual');
+ const rows=JSON.parse(c.storage.getItem('duotranslate.local.history.v1'));
+ assert.equal(rows[0].provider,'MyMemory (teste)');
+ assert.equal(rows[0].mode,'listening');
+});
