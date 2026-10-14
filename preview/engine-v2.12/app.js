@@ -160,22 +160,46 @@ function exitRoom(){
 function bindPeer(peer){
  state.peer=peer;
  peer.on('error',e=>{
-  const type=e && e.type;
-  if(type==='unavailable-id'){notify('Sala ocupada. Crie outro código.',true);exitRoom();}
-  else if(type==='peer-unavailable'){notify('Sala não encontrada. Confira o código.',true);exitRoom();}
-  else notify('Erro de conexão: '+(type||'tente de novo'),true);
+  if(state.peer!==peer)return;
+  const type=String(e?.type||'desconhecido');
+  const details={
+   'unavailable-id':'Código de sala já em uso no servidor público. Recrie a sala.',
+   'peer-unavailable':'Sala não encontrada. Confira os 8 caracteres e se o criador mantém a página aberta.',
+   'network':'Falha de rede ao alcançar o servidor de sinalização PeerJS.',
+   'server-error':'O serviço público de sinalização recusou a conexão.',
+   'socket-error':'Falha no canal de sinalização.',
+   'socket-closed':'O servidor de sinalização fechou o canal.',
+   'browser-incompatible':'Este navegador não disponibiliza WebRTC.'
+  };
+  const message=(details[type]||'Erro PeerJS: '+type)+' Se continuar, tentem outra rede.';
+  clearTimeout(state.connectionTimer);
+  setConnectionPhase('failed',message);notify(message,true);
  });
  peer.on('disconnected',()=>{
-  if(state.peer===peer){notify('Reconectando ao servidor...',true);try{peer.reconnect();}catch(e){}}
+  if(state.peer!==peer||!state.room||connected())return;
+  setConnectionPhase('reconnecting','Sinalização interrompida. Tentando recuperar a comunicação por até 12 segundos.');
+  watchdog(12000,'reconnecting','Não foi possível retomar a sinalização PeerJS.');
+  try{peer.reconnect();}catch(e){setConnectionPhase('failed','Falha ao reconectar ao servidor: '+String(e.message||e));}
  });
 }
 function createRoom(){
  if(!canStart())return;
- exitRoom();state.room=randomRoom();state.host=true;view();
- const peer=new window.Peer(peerId(state.room));bindPeer(peer);
- peer.on('open',()=>{if(peer===state.peer)status('Sala aberta! Compartilhe o código.');});
+ exitRoom();state.room=randomRoom();state.host=true;
+ setConnectionPhase('registering','Registrando o código no servidor público. Aguarde a confirmação antes de compartilhá-lo.');
+ watchdog(12000,'registering','O servidor não confirmou a abertura da sala em 12 segundos.');
+ let peer;
+ try{peer=new window.Peer(peerId(state.room));}catch(e){setConnectionPhase('failed','Não foi possível abrir o PeerJS: '+String(e.message||e));return;}
+ bindPeer(peer);
+ peer.on('open',()=>{
+  if(peer!==state.peer||state.connectionPhase==='failed')return;
+  state.peerReady=true;clearTimeout(state.connectionTimer);
+  setConnectionPhase('waiting','Sala registrada. Compartilhe o código de 8 caracteres. O outro aparelho deve entrar nesta mesma sala.');
+ });
  peer.on('connection',conn=>{
+  if(peer!==state.peer||state.connectionPhase==='failed'){try{conn.close();}catch(e){}return;}
   if(state.conn && state.conn.open){conn.on('open',()=>conn.close());return;}
+  setConnectionPhase('connecting','Outro aparelho localizado. Abrindo o canal WebRTC…');
+  watchdog(15000,'connecting','O outro aparelho respondeu, mas o canal não abriu em 15 segundos. Rede/NAT/firewall podem bloquear.');
   useConnection(conn);
  });
 }
@@ -183,9 +207,20 @@ function joinRoom(){
  if(!canStart())return;
  const room=normalized(el.code.value);
  if(room.length!==8){notify('Digite o código completo de 8 caracteres.',true);return;}
- exitRoom();state.room=room;state.host=false;view();
- const peer=new window.Peer();bindPeer(peer);
- peer.on('open',()=>{if(state.peer===peer)useConnection(peer.connect(peerId(room),{reliable:true}));});
+ exitRoom();state.room=room;state.host=false;
+ setConnectionPhase('searching','Consultando o servidor público para localizar a sala '+room+'…');
+ watchdog(15000,'searching','Não foi possível consultar o servidor de salas em 15 segundos.');
+ let peer;
+ try{peer=new window.Peer();}catch(e){setConnectionPhase('failed','Não foi possível abrir o PeerJS: '+String(e.message||e));return;}
+ bindPeer(peer);
+ peer.on('open',()=>{
+  if(state.peer!==peer||state.connectionPhase==='failed')return;
+  state.peerReady=true;
+  setConnectionPhase('connecting','Servidor acessível. Procurando o criador da sala e abrindo o canal WebRTC…');
+  watchdog(20000,'connecting','O outro aparelho não respondeu em 20 segundos. Confiram código, rede e se a página permanece aberta.');
+  try{useConnection(peer.connect(peerId(room),{reliable:true}));}
+  catch(e){setConnectionPhase('failed','Falha ao conectar à sala: '+String(e.message||e));}
+ });
 }
 function useConnection(conn){
  if(state.conn && state.conn!==conn){try{state.conn.close();}catch(e){}}
