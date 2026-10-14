@@ -137,8 +137,8 @@
     target:ui.to.value,original,translation:translation||'',provider,translationMs:Math.round(translationMs||0),
     error,duo214:{...details}});
    localStorage.setItem(key,JSON.stringify(items.slice(0,250)));
-   return id;
    try{document.getElementById('duoRealFrame')?.contentWindow?.DuoHistory?.refresh?.();}catch(e){}
+   return id;
   }catch(e){status('Tradução pronta; falha ao salvar Histórico: '+String(e.message||e).slice(0,90));}
  }
  function markAudio(id,stage,error=''){
