@@ -19,7 +19,7 @@
   const a=tidy(oldText),b=tidy(newText);if(!a||!b)return '';
   let n=0;while(n<a.length&&n<b.length&&a[n]===b[n])n++;
   const shared=b.slice(0,n);if(n===b.length||/^\s|[.,!?;:]/.test(b[n]||''))return shared.trim();
-  return shared.slice(0,shared.lastIndexOf(' ')).trim();
+  const boundary=shared.lastIndexOf(' ');return boundary<0?'':shared.slice(0,boundary).trim();
  };
  let mounted=false,visible=false,ui=null,recognizer=null,active=false,userStopped=false,session=0;
  let translator=null,translatorKey='',running=false,previewTimer=null,previewEpoch=0;
