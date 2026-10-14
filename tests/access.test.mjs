@@ -996,3 +996,122 @@ test('2.13 guest flow preserves approved layout, skips full onboarding and joins
  assert.ok(!helper.includes('ELEVENLABS_API_KEY'));
  new Function(helper);
 });
+
+
+function makeListen214Browser(source,{translator=true,withAccess=false,voiceFailure=false}={}){
+ const nodes=new Map(),spoken=[],translatorCalls=[],apiCalls=[];
+ class Item{
+  constructor(id=''){this.id=id;this.value='';this.textContent='';this.disabled=false;this.hidden=false;this.checked=false;
+   this.children=[];this.listeners={};this.attributes={};this.innerHTML='';this.style={};
+  }
+  addEventListener(name,fn){this.listeners[name]=fn;}
+  click(){return this.listeners.click?.();}
+  change(){return this.listeners.change?.();}
+  setAttribute(k,v){this.attributes[k]=v;}
+  append(...items){this.children.push(...items);}
+  prepend(item){this.children.unshift(item);}
+  replaceChildren(...items){this.children=items;}
+  get options(){return this.children;}
+  get lastChild(){return this.children.at(-1);}
+  remove(){this.removed=true;}
+ }
+ const get=id=>{if(!nodes.has(id))nodes.set(id,new Item(id));return nodes.get(id);};
+ const document={getElementById:get,createElement:tag=>new Item('created-'+tag)};
+ const values=new Map();
+ const storage={getItem:k=>values.get(k)||null,setItem:(k,v)=>values.set(k,String(v)),removeItem:k=>values.delete(k)};
+ const voiceId='abcdefghijklmnopqrst';
+ const window={
+  Translator:translator?{create:async()=>({translate:async text=>{translatorCalls.push(text);return 'Traduit: '+text;},destroy(){}})}:undefined,
+  DuoPhrasebook:{translate:()=>null},
+  DuoReliable:{translate:async text=>({text:'Gemini: '+text,provider:'MyMemory (teste)'})},
+  DuoEleven:{available:()=>true,directory:()=>[{id:voiceId,name:'Premium voice'}],
+   choices:()=>({selected:voiceId}),loadVoices:async()=>[{id:voiceId,name:'Premium voice'}]},
+  DuoAccess:withAccess?{active:true,voiceUrl:'https://voice.example.test',
+   fetch:async(url,init)=>{apiCalls.push({url,init});return voiceFailure?
+    {ok:false,status:429,json:async()=>({error:'Limite de voz'})}:
+    {ok:true,blob:async()=>new Blob(['audio'])};}}:undefined,
+  speechSynthesis:{
+   getVoices:()=>[{name:'Local voice',voiceURI:'local-voice-1',lang:'fr-FR'}],
+   addEventListener(){},cancel(){},
+   speak(utterance){spoken.push(utterance.text);
+    setTimeout(()=>{utterance.onstart?.();setTimeout(()=>utterance.onend?.(),0);},0);}
+  },
+  SpeechSynthesisUtterance:class{constructor(text){this.text=text;}},
+  Audio:class{play(){setTimeout(()=>{this.onplaying?.();setTimeout(()=>this.onended?.(),0);},0);return Promise.resolve();}pause(){}},
+  crypto:{randomUUID:()=>String(Math.random())},
+  addEventListener(){},
+ };
+ const urls={createObjectURL:()=> 'blob:mock',revokeObjectURL(){}};
+ const ctx=vm.createContext({window,document,localStorage:storage,sessionStorage:storage,
+  URL:{...urls},Audio:window.Audio,Blob,AbortController,performance,setTimeout,clearTimeout,Date,Math});
+ vm.runInContext(source,ctx);
+ window.DuoListening214.mount({from:'pt-BR',to:'fr-FR'});
+ window.DuoListening214.setVisible(true);
+ return {window,get,storage,spoken,translatorCalls,apiCalls};
+}
+
+test('2.14 introduces an independent listening panel without changing approved UI or existing conversation',async()=>{
+ const old=await readFile(new URL('../preview/v2.13/index.html',import.meta.url),'utf8');
+ const fresh=await readFile(new URL('../preview/v2.14/index.html',import.meta.url),'utf8');
+ const ui=await readFile(new URL('../voice/listening-v214-ui.js',import.meta.url),'utf8');
+ const engine=await readFile(new URL('../voice/listening-v214.js',import.meta.url),'utf8');
+ const access=await readFile(new URL('../access/client-v2.14.js',import.meta.url),'utf8');
+ const css=x=>(x.match(/<style[^>]*>([\s\S]*?)<\/style>/)||[])[1];
+ assert.equal(css(old),css(fresh),'2.13 approved CSS must be preserved');
+ assert.ok(fresh.includes('voice/listening-v214-ui.js?v=1'));
+ assert.ok(fresh.includes('voice/listening-v214.js?v=1'));
+ assert.ok(fresh.includes('access/client-v2.14.js?v=1'));
+ assert.ok(fresh.includes("if(intState.view==='listening')window.DuoListening214?.mount("));
+ assert.ok(fresh.includes("window.DuoListening214?.setVisible(intState.view==='listening')"));
+ assert.ok(fresh.includes("$('intOpenListen').onclick=()=>intGo('listening');"));
+ assert.ok(fresh.includes("new URL('../engine-v2.12/'+roomParam"));
+ assert.ok(old.includes('access/client-v2.12.js?v=2.13'));
+ assert.ok(access.includes("if(!/\\/preview\\/v2\\.14\\/?$/.test(location.pathname))return;"));
+ assert.ok(ui.includes("value=\"eleven\""));
+ assert.ok(ui.includes("value=\"local\""));
+ assert.ok(!engine.includes('api.mymemory.translated.net'));
+ assert.ok(!engine.includes('ELEVENLABS_API_KEY'));
+ new Function(ui);new Function(engine);
+});
+
+test('2.14 local listening translates typed phrase and plays device speech without any network API',async()=>{
+ const code=await readFile(new URL('../voice/listening-v214.js',import.meta.url),'utf8');
+ const c=makeListen214Browser(code);
+ assert.equal(c.window.DuoListening214.state.engine,'local');
+ assert.equal(c.window.DuoListening214.state.output,'device');
+ assert.equal(c.window.DuoListening214.state.localReady,false);
+ await c.get('duoListen214Prepare').click();
+ assert.equal(c.window.DuoListening214.state.localReady,true);
+ c.get('duoListen214ManualText').value='Faz frio essa semana';
+ c.get('duoListen214Manual').click();
+ await new Promise(r=>setTimeout(r,35));
+ assert.deepEqual(c.translatorCalls,['Faz frio essa semana']);
+ assert.deepEqual(c.spoken,['Traduit: Faz frio essa semana']);
+ assert.equal(c.apiCalls.length,0);
+ assert.equal(c.get('duoListen214Translation').textContent,'Traduit: Faz frio essa semana');
+ const history=JSON.parse(c.storage.getItem('duotranslate.local.history.v1'));
+ assert.equal(history.length,1);
+ assert.equal(history[0].mode,'listening');
+ assert.equal(history[0].provider,'Chrome Translator local');
+ assert.ok(history[0].translationMs>=0);
+ c.window.DuoListening214.setVisible(false);
+ assert.equal(c.window.DuoListening214.state.visible,false);
+});
+
+test('2.14 requires explicit selection before accessing ElevenLabs and reports voice failure without fallback',async()=>{
+ const code=await readFile(new URL('../voice/listening-v214.js',import.meta.url),'utf8');
+ const c=makeListen214Browser(code,{withAccess:true,voiceFailure:true});
+ await c.get('duoListen214Prepare').click();
+ c.get('duoListen214Output').value='eleven';
+ c.get('duoListen214Output').change();
+ c.get('duoListen214Premium').value='abcdefghijklmnopqrst';
+ c.get('duoListen214ManualText').value='Um teste de voz premium';
+ c.get('duoListen214Manual').click();
+ await new Promise(r=>setTimeout(r,35));
+ assert.equal(c.apiCalls.length,1);
+ assert.match(c.apiCalls[0].url,/\/stream-tts$/);
+ assert.equal(JSON.parse(c.apiCalls[0].init.body).voiceId,'abcdefghijklmnopqrst');
+ assert.equal(c.spoken.length,0,'No device speech should be substituted for a failed premium voice');
+ assert.match(c.get('duoListen214Status').textContent,/Nenhuma troca automática de voz/);
+ assert.equal(c.get('duoListen214Translation').textContent,'Traduit: Um teste de voz premium');
+});
