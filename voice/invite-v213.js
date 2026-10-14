@@ -60,9 +60,19 @@ function onFrameReady(doc){
   try{
    if(!window.DuoAccess?.inviteGuest)throw new Error('Convites indisponíveis.');
    status.textContent='Criando convite com acesso individual à ElevenLabs…';
-   const link=await window.DuoAccess.inviteGuest(code,{hostName:host.name,hostSpeak:host.speak,hostHear:host.hear});
-   try{await navigator.clipboard.writeText(link);status.textContent='Convite copiado. Envie o link personalizado ao convidado.';}
-   catch(e){window.prompt('Copie o convite:',link);status.textContent='Convite criado. Compartilhe o link exibido.';}
+   const invitation=window.DuoAccess.inviteGuest(code,{hostName:host.name,hostSpeak:host.speak,hostHear:host.hear});
+   try{
+    if(window.ClipboardItem&&navigator.clipboard?.write){
+     await navigator.clipboard.write([new window.ClipboardItem({
+      'text/plain':invitation.then(link=>new Blob([link],{type:'text/plain'}))
+     })]);
+    }else await navigator.clipboard.writeText(await invitation);
+    status.textContent='Convite copiado. Envie o link personalizado ao convidado.';
+   }catch(e){
+    const link=await invitation;
+    window.prompt('Copie este link de convite:',link);
+    status.textContent='Convite criado. Copie o link exibido e envie ao convidado.';
+   }
   }catch(e){status.textContent='Não foi possível criar o convite: '+String(e.message||e).slice(0,180);}
  },true);
  if(autoJoin){
