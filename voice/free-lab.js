@@ -22,7 +22,7 @@
  };
  let mounted=false,visible=false,ui=null,recognizer=null,active=false,userStopped=false,session=0;
  let translator=null,translatorKey='',running=false,previewTimer=null,previewEpoch=0;
- let firstInterimAt=0,lastFinal='',restartAttempts=0,restartTimer=null,prepared=false,voiceURI='';
+ let firstInterimAt=0,lastFinal='',restartAttempts=0,restartTimer=null,prepared=false,voiceURI='',finalEpoch=0;
  const $=id=>document.getElementById(id);
  const pair=()=>short(ui.from.value)+'>'+short(ui.to.value);
  const status=(message)=>{if(ui)ui.status.textContent=message;};
@@ -38,7 +38,7 @@
   if(ui){ui.listen.textContent='Iniciar escuta';ui.listen.setAttribute('aria-pressed','false');}
   if(message)status(message);
  }
- function setVisible(value){visible=!!value;if(!visible)stop('');}
+ function setVisible(value){const wasVisible=visible;visible=!!value;if(wasVisible&&!visible)stop('');}
  function voices(){
   const selected=voiceURI||ui.voice.value;
   const list=(window.speechSynthesis?.getVoices?.()||[]);
@@ -61,12 +61,12 @@
   if(local){output=local.text;provider=local.provider;}
   else if(canTranslate()){
    try{output=tidy(await translator.translate(original));provider='Chrome Translator local';}
-   catch(e){if(epoch===previewEpoch)status('O modelo local falhou: '+String(e.message||e).slice(0,110));return;}
+   catch(e){if((partial?epoch===previewEpoch:epoch===finalEpoch))status('O modelo local falhou: '+String(e.message||e).slice(0,110));return;}
   }else{
-   if(!partial&&epoch===previewEpoch)status('Esta frase não está no vocabulário local. Clique em Preparar tradução local para testar frases livres; não usamos serviços pagos.');
+   if(!partial&&epoch===finalEpoch)status('Esta frase não está no vocabulário local. Clique em Preparar tradução local para testar frases livres; não usamos serviços pagos.');
    return;
   }
-  if(epoch!==previewEpoch||selectedPair!==pair()||!visible)return;
+  if((partial?epoch!==previewEpoch:epoch!==finalEpoch)||selectedPair!==pair()||!visible)return;
   if(!output){if(!partial)status('O tradutor local não produziu uma tradução.');return;}
   if(partial){ui.preview.textContent='Prévia ainda sujeita a revisão: '+output;return;}
   const ms=safeNow()-started;
@@ -128,8 +128,8 @@
  }
  async function finalSentence(text){
   const value=tidy(text);if(!value)return;
-  clearTimeout(previewTimer);previewEpoch++;lastFinal=value;
-  const epoch=previewEpoch;
+  clearTimeout(previewTimer);previewEpoch++;finalEpoch++;lastFinal=value;
+  const epoch=finalEpoch;
   ui.original.textContent=value;ui.preview.textContent='';
   await translateText(value,epoch,false);
  }
