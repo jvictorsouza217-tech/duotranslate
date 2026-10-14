@@ -179,7 +179,7 @@ test('unauthorized origins and missing access bindings fail closed',async()=>{
 function browserStore(initial={}) {
  const values=new Map(Object.entries(initial));return {getItem:k=>values.get(k)||null,setItem:(k,v)=>values.set(k,String(v)),removeItem:k=>values.delete(k),values};
 }
-async function client(f,href,initial={},top=null,tabInitial={}) {
+async function client(f,href,initial={},top=null,tabInitial={},scriptPath='../access/client.js') {
  const localStorage=browserStore(initial),sessionStorage=browserStore(tabInitial),requests=[];
  const location={href,pathname:new URL(href).pathname,hash:new URL(href).hash};
  const document={getElementById:()=>null,addEventListener:()=>{}};
@@ -194,7 +194,7 @@ async function client(f,href,initial={},top=null,tabInitial={}) {
  const context=vm.createContext({window:win,localStorage,sessionStorage,location,document,
   history:{replaceState:(_a,_b,url)=>{location.href=url;location.hash=new URL(url).hash;}},
   Headers,Request,URL,URLSearchParams,AbortController,Blob,Event,setTimeout,clearTimeout,queueMicrotask});
- vm.runInContext(await readFile(new URL('../access/client.js',import.meta.url),'utf8'),context);
+ vm.runInContext(await readFile(new URL(scriptPath,import.meta.url),'utf8'),context);
  await win.DuoAccess?.ready;
  return {win,localStorage,sessionStorage,location,requests,context,document};
 }
