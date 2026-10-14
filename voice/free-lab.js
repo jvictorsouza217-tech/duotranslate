@@ -22,7 +22,7 @@
  };
  let mounted=false,visible=false,ui=null,recognizer=null,active=false,userStopped=false,session=0;
  let translator=null,translatorKey='',running=false,previewTimer=null,previewEpoch=0;
- let firstInterimAt=0,lastFinal='',restartAttempts=0,restartTimer=null,prepared=false,voiceURI='',finalEpoch=0;
+ let firstInterimAt=0,lastFinal='',restartAttempts=0,restartTimer=null,prepared=false,voiceURI='',finalEpoch=0,finalQueue=[],draining=false;
  const $=id=>document.getElementById(id);
  const pair=()=>short(ui.from.value)+'>'+short(ui.to.value);
  const status=(message)=>{if(ui)ui.status.textContent=message;};
@@ -31,7 +31,7 @@
  const canTranslate=()=>!!translator&&translatorKey===pair();
  function destroyTranslator(){if(translator?.destroy)try{translator.destroy();}catch{} translator=null;translatorKey='';prepared=false;}
  function stop(message='Escuta parada.'){
-  userStopped=true;active=false;session++;previewEpoch++;
+  userStopped=true;active=false;session++;previewEpoch++;finalEpoch++;finalQueue=[];
   clearTimeout(previewTimer);clearTimeout(restartTimer);previewTimer=null;restartTimer=null;
   const old=recognizer;recognizer=null;if(old){try{old.onend=null;old.abort();}catch{}}
   if(window.speechSynthesis)try{window.speechSynthesis.cancel();}catch{}
@@ -86,7 +86,9 @@
     if(Array.isArray(arr)){arr.unshift({id:window.crypto?.randomUUID?.()||'free-'+Date.now(),
      at:new Date().toISOString(),mode:'continuous',direction:'sent',source:ui.from.value,
      target:ui.to.value,original,translation:output,provider:provider+' · 2.11',translationMs:ms,error:''});
-     localStorage.setItem(key,JSON.stringify(arr.slice(0,250)));}
+     localStorage.setItem(key,JSON.stringify(arr.slice(0,250)));
+     try{document.getElementById('duoRealFrame')?.contentWindow?.DuoHistory?.refresh?.();}catch{}
+    }
    }catch(e){status('Tradução pronta, mas não foi possível salvar o histórico: '+String(e.message||e).slice(0,80));}
   }
   if(ui.speak.checked)readAloud(output);
@@ -97,7 +99,7 @@
   if(voiceURI&&!chosen){status('A voz selecionada não existe mais neste dispositivo. Nenhuma voz foi substituída.');return;}
   if(ui.interrupt.checked)synth.cancel();
   const utterance=new SpeechSynthesisUtterance(text);utterance.lang=ui.to.value;
-  if(chosen)utterance.voice=chosen;
+  if(chosen){utterance.voice=chosen;if(!voiceURI){voiceURI=chosen.voiceURI;ui.voice.value=voiceURI;}}
   utterance.rate=1;
   utterance.onerror=()=>{status('Texto traduzido, mas a reprodução de voz do navegador falhou.');};
   try{synth.speak(utterance);}catch(e){status('Áudio do navegador indisponível: '+String(e.message||e));}
@@ -126,12 +128,21 @@
    report('Motor local indisponível para esta combinação ou dispositivo: '+String(e.message||e).slice(0,130)+'. Teste frases rápidas ou outro Chrome desktop.');
   }finally{ui.prepare.disabled=false;ui.prepare.textContent='Preparar tradução local';}
  }
- async function finalSentence(text){
+ function finalSentence(text){
   const value=tidy(text);if(!value)return;
-  clearTimeout(previewTimer);previewEpoch++;finalEpoch++;lastFinal=value;
-  const epoch=finalEpoch;
+  clearTimeout(previewTimer);previewEpoch++;lastFinal=value;
   ui.original.textContent=value;ui.preview.textContent='';
-  await translateText(value,epoch,false);
+  if(finalQueue.length>=8){status('Muitas frases pendentes. Aguarde a tradução local terminar.');return;}
+  finalQueue.push(value);void drainFinal();
+ }
+ async function drainFinal(){
+  if(draining)return;
+  draining=true;
+  try{while(finalQueue.length){
+    const original=finalQueue.shift(),epoch=++finalEpoch;
+    await translateText(original,epoch,false);
+   }}
+  finally{draining=false;}
  }
  function schedulePreview(value,old){
   clearTimeout(previewTimer);const text=tidy(value),epoch=++previewEpoch;
@@ -207,7 +218,7 @@
   ui.input.addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();finalSentence(ui.input.value);}});
   for(const node of [ui.from,ui.to])node.addEventListener('change',()=>{
    stop('Idiomas alterados. Prepare novamente o motor de tradução local.');
-   destroyTranslator();report('Par de idiomas alterado. Clique em Preparar tradução local.');
+   destroyTranslator();finalQueue=[];report('Par de idiomas alterado. Clique em Preparar tradução local.');
    ui.original.textContent='';ui.translated.textContent='';ui.preview.textContent='';
   });
   ui.voice.addEventListener('change',()=>{voiceURI=ui.voice.value;});
