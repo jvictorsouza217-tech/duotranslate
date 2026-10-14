@@ -131,15 +131,29 @@
   try{
    const key='duotranslate.local.history.v1',items=JSON.parse(localStorage.getItem(key)||'[]');
    if(!Array.isArray(items))return;
-   items.unshift({id:window.crypto?.randomUUID?.()||'listen214-'+Date.now()+'-'+(++historyCount),
+   const id=window.crypto?.randomUUID?.()||'listen214-'+Date.now()+'-'+(++historyCount);
+   items.unshift({id,
     at:new Date().toISOString(),mode:'listening',direction:'sent',source:ui.from.value,
     target:ui.to.value,original,translation:translation||'',provider,translationMs:Math.round(translationMs||0),
     error,duo214:{...details}});
    localStorage.setItem(key,JSON.stringify(items.slice(0,250)));
+   return id;
    try{document.getElementById('duoRealFrame')?.contentWindow?.DuoHistory?.refresh?.();}catch(e){}
   }catch(e){status('Tradução pronta; falha ao salvar Histórico: '+String(e.message||e).slice(0,90));}
  }
- async function translation(text){
+ function markAudio(id,stage,error=''){
+ if(!id)return;
+ try{
+  const key='duotranslate.local.history.v1',entries=JSON.parse(localStorage.getItem(key)||'[]');
+  if(!Array.isArray(entries))return;
+  const entry=entries.find(x=>x.id===id);if(!entry)return;
+  entry.duo214={...(entry.duo214||{}),audioStatus:stage};
+  if(error)entry.error='Falha de áudio: '+error;
+  localStorage.setItem(key,JSON.stringify(entries));
+  try{document.getElementById('duoRealFrame')?.contentWindow?.DuoHistory?.refresh?.();}catch(e){}
+ }catch(e){/* Voice status remains visible even if storage is unavailable. */}
+}
+async function translation(text){
   const phrase=window.DuoPhrasebook?.translate?.(text,ui.from.value,ui.to.value);
   if(phrase!==null&&phrase!==undefined)return {text:CLEAN(phrase),provider:'Frases rápidas locais'};
   if(isLocal()){
@@ -257,7 +271,7 @@
    ui.translation.textContent=translated;
    ui.metrics.textContent='Tradução: '+translationMs+' ms'+(item.sttMs===null?'':' · Primeira parcial → frase final: '+Math.round(item.sttMs)+' ms')+' · Áudio aguardando início';
    appendResult(item.text,translated,provider,'');
-   record(item.text,translated,provider,translationMs,'',{speechToTextMs:item.sttMs,output:audioChoice});
+   const historyId=record(item.text,translated,provider,translationMs,'',{speechToTextMs:item.sttMs,output:audioChoice,audioStatus:'pending'});
    const ttsAt=clock(),startFromFirstInterim=item.sttMs===null?null:item.seenAt-item.sttMs;
    let startedAudio=false;
    status('Tradução pronta em '+translationMs+' ms; preparando '+(audioChoice==='eleven'?'ElevenLabs':'voz do dispositivo')+'…');
@@ -272,11 +286,12 @@
      status('Reproduzindo em '+(audioChoice==='eleven'?'ElevenLabs':'voz do dispositivo')+'.');
     });
     if(run!==token)return;
-    if(!startedAudio){status('Áudio solicitado, mas o navegador não confirmou o início da reprodução.');}
-    else status('Pronto. Escutando próximas frases.');
+    if(!startedAudio){markAudio(historyId,'unconfirmed');status('Áudio solicitado, mas o navegador não confirmou o início da reprodução.');}
+    else{markAudio(historyId,'started');status('Pronto. Escutando próximas frases.');}
    }catch(e){
     if(run!==token)return;
     const message=String(e.message||e);
+    markAudio(historyId,'failed',message);
     status('Texto traduzido, mas a voz '+(audioChoice==='eleven'?'ElevenLabs':'do dispositivo')+' falhou: '+message+'. Nenhuma troca automática de voz.');
     ui.metrics.textContent='Tradução: '+translationMs+' ms · Falha de áudio: '+message;
    }
