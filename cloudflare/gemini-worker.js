@@ -7,6 +7,7 @@
  * Publique este Worker e configure https://NOME.WORKERS.DEV no DuoTranslate.
  */
 import {handleAccessRequest} from './access-store.js';
+export {DuoRoom217} from './room-v217.js';
 import {individualAccess} from './access-auth.js';
 export {DuoAccessStore} from './access-store.js';
 const APP_ORIGIN = 'https://jvictorsouza217-tech.github.io';
@@ -46,6 +47,14 @@ export default {
    return new Response('Origem não permitida.',{status:403});
   const url=new URL(request.url);
   if(request.method==='OPTIONS')return new Response(null,{status:204,headers:cors(origin)});
+  if(url.pathname==='/room/v217') {
+   const ticket=url.searchParams.get('ticket')||'';
+   if(!/^[a-f0-9]{32}$/.test(ticket))return json({error:'Convite de sala inválido.'},400);
+   if(request.method!=='GET'||request.headers.get('Upgrade')?.toLowerCase()!=='websocket')
+    return json({error:'Esta rota exige WebSocket.'},426);
+   if(!env.DUO_ROOMS_217)return json({error:'Sala 2.17 ainda não publicada no Worker.'},503);
+   return env.DUO_ROOMS_217.get(env.DUO_ROOMS_217.idFromName(ticket)).fetch(request);
+  }
   if(url.pathname.startsWith('/access/'))return handleAccessRequest(request,env,sameSecret);
   if(request.method==='GET' && url.pathname==='/health')
    return json({ok:true,service:'DuoTranslate AI',version:'1.7.0',configured:!!(env.GEMINI_API_KEY&&env.DUO_ACCESS_CODE),model:DEFAULT_MODEL,individualAccess:!!env.DUO_ACCESS_STORE,accessVersion:1});
