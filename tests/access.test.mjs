@@ -976,3 +976,23 @@ test('2.13 guests use the existing ElevenLabs stream securely and cannot issue n
   assert.ok(guest.requests.at(-1).headers.has('Authorization'));
  });
 });
+
+
+test('2.13 guest flow preserves approved layout, skips full onboarding and joins the invited room',async()=>{
+ const old=await readFile(new URL('../preview/v2.12/index.html',import.meta.url),'utf8');
+ const fresh=await readFile(new URL('../preview/v2.13/index.html',import.meta.url),'utf8');
+ const helper=await readFile(new URL('../voice/invite-v213.js',import.meta.url),'utf8');
+ const style=text=>(text.match(/<style[^>]*>([\s\S]*?)<\/style>/)||[])[1];
+ assert.equal(style(fresh),style(old));
+ assert.ok(fresh.includes('voice/invite-v213.js?v=1'));
+ assert.ok(fresh.includes("const quickGuest=new URLSearchParams"));
+ assert.ok(fresh.includes("window.DuoGuestEnter=data=>enterIntegrated(data)"));
+ assert.ok(fresh.includes("window.DuoGuestInvites?.onFrameReady?.(doc)"));
+ assert.ok(helper.includes("window.DuoAccess.inviteGuest(code"));
+ assert.ok(helper.includes("window.DuoEleven?.selectVoice(hear,voice.slice(7),true)"));
+ assert.ok(helper.includes("input.value=room;join.click()"));
+ assert.ok(helper.includes("window.DuoGuestEnter({complete:true"));
+ assert.ok(!old.includes('voice/invite-v213.js'));
+ assert.ok(!helper.includes('ELEVENLABS_API_KEY'));
+ new Function(helper);
+});
