@@ -442,7 +442,7 @@ body[data-duo-int-view="listening"] #intOnePhoneOptions .int-actions{display:non
   </div>
 </section>
 
-<script src="../engine-v2.7/phrasebook.js?v=2.11-free"></script><script src="../../voice/free-lab.js?v=1"></script><script src="../../translation/reliable.js?v=1"></script><script src="../../voice/picker.js?v=2"></script><script src="../../voice/continuous.js?v=3"></script><script src="../../voice/profile.js?v=1"></script><script src="../../access/client-v2.12.js?v=1"></script><script src="../engine-v2.7/premium-voice.js?v=2.7-access-2"></script><script src="../../access/eleven-setup.js?v=2"></script><script src="../../access/users.js?v=1" defer></script>
+<script src="../engine-v2.7/phrasebook.js?v=2.11-free"></script><script src="../../voice/free-lab.js?v=1"></script><script src="../../translation/reliable.js?v=1"></script><script src="../../voice/picker.js?v=2"></script><script src="../../voice/continuous.js?v=3"></script><script src="../../voice/profile.js?v=1"></script><script src="../../access/client-v2.12.js?v=2.13"></script><script src="../engine-v2.7/premium-voice.js?v=2.7-access-2"></script><script src="../../access/eleven-setup.js?v=2"></script><script src="../../access/users.js?v=1" defer></script><script src="../../voice/invite-v213.js?v=1" defer></script>
 <script>
 (async()=>{'use strict';
 await window.DuoAccess?.ready;
@@ -730,7 +730,7 @@ if(!doc.getElementById('duoIntegration25')){const st=doc.createElement('style');
 const lang=doc.querySelector('.language[data-lang="'+data.speak+'"]');if(lang&&!lang.classList.contains('selected'))lang.click();
 selectBeta('duoHearLanguage',data.hear);if(data.voiceURI&&!Object.prototype.hasOwnProperty.call(voiceSettings().voices||{},data.hear)){saveVoiceSettings(data.hear,data.voiceURI)}selectBeta('soloSource',data.speak);selectBeta('soloTarget',data.hear);selectBeta('interfaceLanguage',data.ui.split('-')[0]);selectBeta('voiceOtherLang',data.hear);
 if(!intState.frameObserver){intState.frameObserver=new MutationObserver(()=>requestAnimationFrame(resizeIntFrame));intState.frameObserver.observe(doc.body,{childList:true,attributes:true,subtree:true,characterData:true})}
-intState.frameReady=true;showFrameRoute();if(['nearby','listening','continuous'].includes(intState.view))applyOnePhone(false);return true;}
+intState.frameReady=true;showFrameRoute();window.DuoGuestInvites?.onFrameReady?.(doc);if(['nearby','listening','continuous'].includes(intState.view))applyOnePhone(false);return true;}
 function resizeIntFrame(){if(!intState.frameReady)return;const doc=integrateFrameDoc();if(!doc)return;const f=$('duoRealFrame');const min=420;const natural=Math.max(doc.body.scrollHeight,doc.documentElement.scrollHeight);const h=Math.max(min,Math.min(natural+20,3600));if(Math.abs((parseInt(f.style.height)||0)-h)>8)f.style.height=h+'px';}
 function frameMode(){if(intState.view==='connect')return 'connect';if(intState.view==='talk')return 'talk';if(['solo','nearby','listening'].includes(intState.view))return 'solo';if(intState.view==='history')return 'history';if(intState.view==='settings')return ({voices:'voices',ai:'ai',usage:'usage'}[intState.settings]||'');return '';}
 function showFrameRoute(){const doc=integrateFrameDoc();if(!doc)return;const view=frameMode();doc.body.dataset.duoView=view;doc.body.dataset.duoContext=intState.view;if(view==='voices')doc.getElementById('voicePanel').open=true;if(view==='history')doc.defaultView?.DuoHistory?.refresh?.();requestAnimationFrame(()=>requestAnimationFrame(resizeIntFrame));}
@@ -857,7 +857,7 @@ function refreshQuickVoice(){
 }
 async function quickVoiceBrowse(){
  const cfg=premiumStored(),pin=sessionStorage.getItem('duotranslate.voice.pin.session')||'',api=integrateFrameDoc()?.defaultView?.DuoPremiumVoice||window.DuoPremiumVoice;
- if(!cfg.url||!pin){$('quickVoiceHelp').textContent='Confira o Worker e o código de acesso em Configurações → Vozes.';return;}
+ if(!cfg.url||(!pin&&!window.DuoAccess?.active)){$('quickVoiceHelp').textContent='Ative o acesso ao serviço de voz para consultar as vozes disponíveis.';return;}
  if(!api){$('quickVoiceHelp').textContent='Aguarde o tradutor carregar.';return;}
  $('quickVoiceHelp').textContent='Buscando vozes na ElevenLabs...';
  try{
@@ -875,7 +875,7 @@ async function quickVoiceBrowse(){
 function quickVoiceApply(quiet=false){
  const lang=quickVoiceTarget(),cfg=premiumStored(),pin=sessionStorage.getItem('duotranslate.voice.pin.session')||'';
  const id=$('quickPremiumVoiceSelect').value;
- if(!cfg.url||!pin||!id){$('quickVoiceHelp').textContent='Selecione uma voz e confira a configuração da ElevenLabs.';return false;}
+ if(!cfg.url||(!pin&&!window.DuoAccess?.active)||!id){$('quickVoiceHelp').textContent='Selecione uma voz e confira o acesso à ElevenLabs.';return false;}
  // A seleção salva e ativa a voz ElevenLabs para o idioma.
  window.DuoEleven.selectVoice(lang,id);
  $('quickVoiceHelp').textContent='Voz selecionada. Agora é só começar a ouvir.';
@@ -954,13 +954,15 @@ if(intState.view==='connect'){$('intRouteDesc').textContent='Crie uma sala, comp
  if(intState.view==='continuous'){$('intRouteTitle').textContent='Tradução contínua';$('intRouteDesc').textContent='Áudio pelo microfone, enviado à ElevenLabs para transcrição. Fones ajudam a evitar eco. O áudio de outro aplicativo no mesmo celular não é captado diretamente.';}
 if(intState.view==='listening'){$('intRouteTitle').textContent=M[16];$('intRouteDesc').textContent='Escute falas ao seu redor e ouça a tradução no idioma escolhido. O áudio é captado pelo microfone.'}
 for(const [i,id] of [[18,'oneSourceLabel'],[19,'oneTargetLabel'],[20,'oneExplain'],[21,'oneSwap'],[22,'oneApply']])$(id).textContent=M[i];
-$('intReviewWelcome').textContent=((intState.data?.ui||'').startsWith('pt')?'Rever a configuração inicial ↗':(intState.data?.ui||'').startsWith('fr')?'Revoir la configuration initiale ↗':(intState.data?.ui||'').startsWith('es')?'Revisar configuración inicial ↗':'Review initial setup ↗');$('intStatus').textContent='';$('intVersionNotice').textContent='DuoTranslate 2.12 · Conexão diagnosticável e laboratório gratuito preservado';if(isSettings&&intState.settings==='devices')renderIntDevices();if(isSettings&&intState.settings==='phrasebook')renderPhrasePanel();updateIntPrefs();showFrameRoute();if(['nearby','listening'].includes(intState.view))applyOnePhone(false);if(intState.view==='continuous'){$('oneExplain').textContent='Escolha o idioma da fonte de áudio e o idioma em que deseja ouvir.';$('oneApply').classList.add('integration-hidden');}else $('oneApply').classList.remove('integration-hidden');}
+$('intReviewWelcome').textContent=((intState.data?.ui||'').startsWith('pt')?'Rever a configuração inicial ↗':(intState.data?.ui||'').startsWith('fr')?'Revoir la configuration initiale ↗':(intState.data?.ui||'').startsWith('es')?'Revisar configuración inicial ↗':'Review initial setup ↗');$('intStatus').textContent='';$('intVersionNotice').textContent='DuoTranslate 2.13 · Entrada rápida de convidados · Voz ElevenLabs autorizada';if(isSettings&&intState.settings==='devices')renderIntDevices();if(isSettings&&intState.settings==='phrasebook')renderPhrasePanel();updateIntPrefs();showFrameRoute();if(['nearby','listening'].includes(intState.view))applyOnePhone(false);if(intState.view==='continuous'){$('oneExplain').textContent='Escolha o idioma da fonte de áudio e o idioma em que deseja ouvir.';$('oneApply').classList.add('integration-hidden');}else $('oneApply').classList.remove('integration-hidden');}
 function renderIntDevices(){let saved=[];try{saved=JSON.parse(localStorage.getItem('duotranslate-concept-profile')||'{}').microphoneProfiles||[]}catch(e){}let out=$('intDevicesList');out.replaceChildren();if(!saved.length){const p=document.createElement('p');p.className='int-caption';p.textContent=tInt().deviceNone;out.append(p);return}
 for(const v of saved){const row=document.createElement('div');row.className='int-profile-row';const a=document.createElement('div');const name=document.createElement('strong');name.textContent=v.name||'Dispositivo';const small=document.createElement('small');small.textContent=[v.kind,v.mic,(v.results||[]).some(r=>r.acoustic)?'Perfil acústico: sensibilidade e pausas personalizadas':'Sem perfil acústico — captação padrão'].filter(Boolean).join(' · ');a.append(name,small);row.append(a);out.append(row)}}
 function enterIntegrated(data,fromReload=false){if(!data)return;intNavigation.length=0;intState.data=data;document.body.classList.add('integrated-active');$('integratedApp').classList.remove('integration-hidden');for(const id of ['intSpeak','intHear','intSettingSpeak','intSettingHear']){$(id).innerHTML=opts}const uiOpts=langs.map(x=>`<option value="${x[0]}">${x[1]}</option>`).join('');$('intInterfaceLang').innerHTML=uiOpts;intState.view=/^[A-Z0-9]{8}$/.test(String(new URLSearchParams(location.search).get('room')||'').toUpperCase())?'connect':'home';$('oneSource').innerHTML=opts;$('oneTarget').innerHTML=opts;$('oneSource').value=data.hear;$('oneTarget').value=data.speak;renderInt();
 const frame=$('duoRealFrame');if(!frame.getAttribute('src')||frame.getAttribute('src')==='about:blank'){frame.addEventListener('load',()=>{intState.frameReady=false;intState.frameObserver?.disconnect();intState.frameObserver=null;applyPrefsToEmbeddedBeta(intState.data);
  const code=readTrustedCodes().gemini,doc=integrateFrameDoc(),field=doc?.getElementById('aiWorkerPin');
  if(code&&field&&!field.value){field.value=code;field.dispatchEvent(new doc.defaultView.Event('change',{bubbles:true}));}}, {once:true});const roomId=String(new URLSearchParams(location.search).get('room')||'').toUpperCase();const roomParam=/^[A-Z0-9]{8}$/.test(roomId)?'?room='+roomId+'&duoAccess=2':'?duoAccess=2';frame.src=new URL('../engine-v2.12/'+roomParam,window.location.href).href}else if(!fromReload)applyPrefsToEmbeddedBeta(data);window.scrollTo(0,0)}
+window.DuoGuestEnter=data=>enterIntegrated(data);
+window.DuoInviteHost=()=>({name:intState.data?.name||currentName()||'Anfitrião',speak:intState.data?.speak||'pt-BR',hear:intState.data?.hear||'fr-FR'});
 function leaveIntegrated(backToStart){window.DuoVoicePicker.stop();continuous.stop();window.DuoFreeLab?.stop('');const frame=$('duoRealFrame');intState.frameObserver?.disconnect();intState.frameObserver=null;intState.frameReady=false;frame.src='about:blank';document.body.classList.remove('integrated-active');$('integratedApp').classList.add('integration-hidden');show(backToStart?0:2)}
 function recordContinuousHistory(original,translation,error=''){
  try{
@@ -1063,7 +1065,7 @@ function showAdminVoiceControls(){ $('premiumAdminConfig').hidden=window.DuoAcce
 window.addEventListener('duo-access-changed',()=>{showAdminVoiceControls();updateTrustedMessage();window.DuoEleven.sync();if(step===3)populateVoices();if(intState.data&&['languages','connect','talk','nearby','listening','continuous','solo'].includes(intState.view))refreshQuickVoice();});
 showAdminVoiceControls();
 window.DuoEleven.sync();
-const previouslyCompleted=persistedIntegration();if(previouslyCompleted&&new URLSearchParams(location.search).get('inicio')!=='1'){
+const previouslyCompleted=persistedIntegration();const quickGuest=new URLSearchParams(location.search).get('guest')==='1'&&/^[A-HJ-NP-Z2-9]{8}$/.test(String(new URLSearchParams(location.search).get('room')||'').toUpperCase());if(!quickGuest&&previouslyCompleted&&new URLSearchParams(location.search).get('inicio')!=='1'){
  enterIntegrated(previouslyCompleted,true);
  if(new URLSearchParams(location.search).get('freeLab')==='1')intGo('free');
 }
