@@ -37,7 +37,7 @@ function journalHarness(){
   }
  };
  const localStorage=fakeStorage(),clicked=[];
- const doc={body:{append(){},},createElement:()=>({click(){clicked.push(this.download);},remove(){}})};
+ const doc={body:{append(){},},getElementById:()=>null,createElement:()=>({click(){clicked.push(this.download);},remove(){}})};
  const window={indexedDB:databaseFactory,crypto:globalThis.crypto};
  const URLstub={createObjectURL:()=> 'blob:test',revokeObjectURL(){}};
  vm.runInNewContext(history,{window,localStorage,document:doc,URL:URLstub,Blob,
@@ -96,7 +96,8 @@ test('conversation history stores recognized, translated and failure details in 
  const events=await h.api.all();
  assert.equal(events.length,2);
  assert.equal(events[1].translation,'bonjour');
- assert.equal(JSON.parse(h.localStorage.getItem('duotranslate.local.history.v1')).length,2);
+ assert.equal(JSON.parse(h.localStorage.getItem('duotranslate.local.history.v1')).length,1);
+ assert.equal(JSON.parse(h.localStorage.getItem('duotranslate.local.history.v1'))[0].mode,'duo');
  assert.equal(await h.api.download('json'),2);
  assert.equal(await h.api.download('csv'),2);
  assert.equal(h.clicked.length,2);
