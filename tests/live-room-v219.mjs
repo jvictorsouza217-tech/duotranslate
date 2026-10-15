@@ -66,7 +66,12 @@ try {
  assert.equal(received.translation,'phrase fictive');
  assert.equal(received.target,'fr-FR');
  await message(host,'delivered');
- console.log('Free live delivery and acknowledgement passed in both WebSocket endpoints.');
+ guest.ws.send(JSON.stringify({type:'speech',original:'phrase fictive',translation:'dummy phrase',target:'pt-BR',provider:'smoke-test'}));
+ const reverse=await message(host,'speech');
+ assert.equal(reverse.translation,'dummy phrase');
+ assert.equal(reverse.target,'pt-BR');
+ await message(guest,'delivered');
+ console.log('Free live delivery in both directions and acknowledgements passed.');
 }finally{
  for(const agent of agents){try{agent.ws.close();}catch{}}
 }
