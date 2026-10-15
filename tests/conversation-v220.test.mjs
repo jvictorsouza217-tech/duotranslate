@@ -138,7 +138,7 @@ test('legitimate speech still translates and creates a send record',async()=>{
 test('voice preview UI is present and is activated explicitly by user click',()=>{
  assert.match(voice,/id="duo217Preview"/);
  assert.match(voice,/duo217Preview'\)\.onclick/);
- assert.match(voice,/session\.voicePreviews\[item\.id\]=item\.preview/);
+ assert.match(voice,/currentSession\.voicePreviews\[item\.id\]=item\.preview/);
  assert.match(voice,/await premiumSpeech\(example\.slice\(0,120\),voice\)/);
  assert.match(voice,/voiceOverride\|\|session\.voice/);
  assert.match(voice,/await window\.DuoVoiceHistory220\.download\(format\)/);
