@@ -244,13 +244,21 @@ async function premiumInvite(){
   const fragment=new URL(invite).hash;
   if(!/^#duo-invite=[a-f0-9]{64}$/.test(fragment))throw Error('Convite premium não autorizado.');
   url.hash=fragment;
-  if(s===session){session.link=url.href;if(!session.paired)setStatus(t('waiting'));}
- }catch(e){if(s===session){session.link=url.href;setStatus(t('noPremium'));}}
+  if(s===session){session.link=url.href;session.premiumInvite=true;
+   $('duo217Copy').textContent=t('copy');
+   if(!session.paired)setStatus(t('waiting')+' ElevenLabs autorizada para o convidado.');
+  }
+ }catch(e){if(s===session){
+  session.link=url.href;session.premiumInvite=false;
+  session.inviteError=String(e.message||e).slice(0,130);
+  $('duo217Copy').textContent=t('copy')+' · sem ElevenLabs';
+  setStatus(t('noPremium')+' Motivo: '+session.inviteError);
+ }}
  if(s===session)$('duo217Copy').disabled=false;
 }
 function fill(name,speak,hear){
  setup();panel.hidden=false;
- $('duo217Name').value=name;$('duo217Speak').value=speak;$('duo217Hear').value=speak;void loadVoices(speak);
+ $('duo217Name').value=name;$('duo217Speak').value=speak;$('duo217Hear').value=speak;
 }
 async function openHost(){
  close();
@@ -260,6 +268,7 @@ async function openHost(){
  const name=String(host.name||defaults.name||'Anfitrião').trim().slice(0,40);
  fill(name,speak,hear);
  s=createState('host',randomTicket(),name,speak,hear);s.counterpart=counterpart;
+ void loadVoices(speak);
  $('duo217Join').classList.add('hide');$('duo217Copy').classList.remove('hide');$('duo217Copy').disabled=true;
  $('duo217Pause').classList.remove('hide');$('duo217Pause').textContent=t('pause');
  setStatus(t('connecting'));const permission=unlockMicrophone();connect();void premiumInvite();await permission;
@@ -276,7 +285,7 @@ async function enterGuest(){
 async function copyLink(){
  if(!s||s.role!=='host')return;
  const link=s.link||makeLink().href;
- try{await navigator.clipboard.writeText(link);setStatus(t('copied'));}
+ try{await navigator.clipboard.writeText(link);setStatus(t('copied')+(s.premiumInvite?' · ElevenLabs autorizada.':' · ElevenLabs não foi autorizada neste convite.'));}
  catch(e){window.prompt('Copie o convite:',link);}
 }
 function close(){
