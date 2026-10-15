@@ -32,14 +32,19 @@ function normalize(entry){
   playback:sanitize(entry.playback,45)};
 }
 function existingHistory(event){
- // Keep compatibility with the existing History button. IndexedDB is the full journal.
+ // The existing app History view expects only completed source/translation pairs.
+ // Every intermediate stage and error remains in the full IndexedDB journal/export.
+ if(!['translated','received'].includes(event.stage)||!event.original||!event.translation)return;
  try{
   if(localStorage.getItem('duotranslate.history.enabled.v1')==='false')return;
+  const item={...event,mode:'duo'};
+  // Update the existing on-screen History immediately if the legacy translator iframe is active.
+  const frame=document.getElementById('duoRealFrame');
+  const api=frame?.contentWindow?.DuoHistory;
+  if(typeof api?.add==='function'){api.add(item);return;}
   const list=JSON.parse(localStorage.getItem(LOCAL)||'[]');
   if(!Array.isArray(list))return;
-  const item={...event};
   list.unshift(item);
-  // The legacy History UI caps other modes at 250. Keep its existing compatibility behavior.
   localStorage.setItem(LOCAL,JSON.stringify(list.slice(0,250)));
  }catch{/* IndexedDB remains the canonical persistent conversation log. */}
 }
