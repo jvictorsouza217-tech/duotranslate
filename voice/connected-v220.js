@@ -63,7 +63,15 @@ function setup(){
  $('duo217Join').onclick=()=>{void enterGuest();};
  $('duo217Copy').onclick=()=>{void copyLink();};
  $('duo217Close').onclick=close;
- $('duo217Pause').onclick=()=>{if(!s)return;if(!s.permission){void unlockMicrophone();return;}s.paused=!s.paused;s.paused?haltRecognition():listen();$('duo217Pause').textContent=t(s.paused?'resume':'pause');};
+ $('duo217Pause').onclick=()=>{
+  if(!s)return;
+  if(!s.permission){void unlockMicrophone();return;}
+  s.paused=true;haltRecognition();clearInterval(s.micTimer);s.micTimer=null;
+  s.micStream?.getTracks().forEach(track=>track.stop());s.micStream=null;s.micAnalyser=null;
+  s.permission=false;
+  $('duo217Pause').textContent=t('activate');
+  setCaption('Microfone pausado. Toque para reativar.');
+ };
  // Both spoken and heard translation use the participant's chosen native language.
  $('duo217Speak').onchange=()=>{
   const selected=$('duo217Speak').value;$('duo217Hear').value=selected;
@@ -255,7 +263,14 @@ function listen(){
   if(session.paired&&!session.paused&&!session.playing&&session.permission)session.restart=setTimeout(listen,650);
  };
  r.onstart=()=>{if(s===session&&session.paired)setCaption('🎙 Microfone ouvindo em '+session.speak+'.');};
- try{r.start();}catch(e){session.rec=null;setStatus('Não foi possível iniciar o microfone: '+String(e.message||e));}
+ try{
+  const track=session.micStream?.getAudioTracks?.()[0];
+  if(track?.readyState==='live'){
+   try{r.start(track);session.trackBound=true;}
+   catch{r.start();session.trackBound=false;}
+  }else{r.start();session.trackBound=false;}
+ }catch(e){session.rec=null;setStatus('Não foi possível iniciar o microfone: '+String(e.message||e));}
+
 }
 function queueSpeech(text){
  const session=s;if(!session?.paired||!text)return;
