@@ -138,7 +138,7 @@ test('legitimate speech still translates and creates a send record',async()=>{
 test('voice preview UI is present and is activated explicitly by user click',()=>{
  assert.match(voice,/id="duo217Preview"/);
  assert.match(voice,/duo217Preview'\)\.onclick/);
- assert.match(voice,/currentSession\.voicePreviews\[item\.id\]=item\.preview/);
+ assert.match(voice,/s\.voicePreviews\[item\.id\]=item\.preview/);
  assert.match(voice,/await premiumSpeech\(example\.slice\(0,120\),voice\)/);
  assert.match(voice,/voiceOverride\|\|session\.voice/);
  assert.match(voice,/await window\.DuoVoiceHistory220\.download\(format\)/);
@@ -148,4 +148,17 @@ test('acoustic calibration is used only as a noise threshold, not as claimed spe
  assert.match(voice,/Não identifica pessoas por voz/);
  assert.match(voice,/createMediaStreamSource\(media\)/);
  assert.match(voice,/session\.micStream\?\.getTracks\(\)\.forEach\(track=>track\.stop\(\)\)/);
+});
+
+
+test('User-invoked voice sample actually plays selected ElevenLabs preview URL',async()=>{
+ const h=createBrowser(),sessionState=session();
+ const id='e'.repeat(20);
+ sessionState.voice=id;
+ sessionState.voicePreviews={[id]:'https://cdn.elevenlabs.io/sample.mp3'};
+ h.controls.duo217Voice.value=id;
+ h.api.setState(sessionState);
+ await h.api.previewVoice();
+ assert.match(h.controls.duo217VoiceState.textContent,/Exemplo reproduzido/);
+ assert.equal(h.events.some(x=>x.stage==='preview-error'),false);
 });
