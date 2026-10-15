@@ -31,6 +31,7 @@ function rejectSpeech(session,text,confidence){
  const normalized=normalizeSpeech(text),now=Date.now();
  if(normalized.length<4)return 'Fala muito curta ou vazia';
  if(session.playing||session.previewing||now<(session.outputMuteUntil||0))return 'Reprodução de áudio em andamento';
+ if(session.micAnalyser&&(!session.lastLoudAt||now-session.lastLoudAt>2700))return 'Sem voz captada acima do limiar acústico';
  if(typeof confidence==='number'&&confidence>0&&confidence<.45)return 'Baixa confiança do reconhecimento';
  if(session.recentSpeech.some(v=>v.value===normalized&&now-v.at<10000))return 'Fala duplicada';
  if(session.outputs.some(v=>v.value===normalized||(normalized.length>12&&v.value.includes(normalized))))return 'Possível eco da voz reproduzida';
@@ -131,7 +132,7 @@ async function previewVoice(){
 }
 function randomTicket(){const bytes=new Uint8Array(16);crypto.getRandomValues(bytes);return Array.from(bytes,b=>b.toString(16).padStart(2,'0')).join('');}
 function createState(role,ticket,name,speak,hear){return {role,ticket,name,speak,hear,voice:'local',voicesVerified:false,lastVoiceAccess:null,active:true,paired:false,peer:null,ws:null,retries:0,
- permission:false,paused:false,rec:null,restart:null,reconnect:null,heartbeat:null,lastPong:Date.now(),audio:null,playing:false,sound:null,pending:0,utterances:[],translating:false,playlist:[],outputs:[],recentSpeech:[],outputMuteUntil:0,previewing:false,voicePreviews:{},link:''};}
+ permission:false,paused:false,rec:null,restart:null,reconnect:null,heartbeat:null,lastPong:Date.now(),audio:null,playing:false,sound:null,pending:0,utterances:[],translating:false,playlist:[],outputs:[],recentSpeech:[],outputMuteUntil:0,previewing:false,voicePreviews:{},micStream:null,micAnalyser:null,micTimer:null,lastLoudAt:0,link:''};}
 function makeLink(){
  const url=new URL('/duotranslate/preview/v2.20/',location.origin);
  url.searchParams.set('duoGuest','1');url.searchParams.set('duoRoom',s.ticket);
@@ -195,7 +196,29 @@ async function unlockMicrophone(){
   const permission=navigator.mediaDevices.getUserMedia({audio:{echoCancellation:true,noiseSuppression:true}});
   const resumed=session.audio?session.audio.resume().catch(()=>{}):Promise.resolve();
   media=await permission;await resumed;
-  media.getTracks().forEach(track=>track.stop());if(s!==session)return;
+  if(s!==session){media.getTracks().forEach(track=>track.stop());return;}
+  // Level detector uses acoustic calibration if available, not biometric speaker recognition.
+  // This analyser is not connected to the speakers or any upload endpoint.
+  session.micStream?.getTracks().forEach(track=>track.stop());clearInterval(session.micTimer);
+  session.micStream=media;
+  try{
+   const source=session.audio?.createMediaStreamSource(media);
+   const analyser=session.audio?.createAnalyser();
+   if(source&&analyser){
+    analyser.fftSize=1024;source.connect(analyser);
+    session.micAnalyser=analyser;const data=new Float32Array(analyser.fftSize);
+    const profile=window.DuoVoiceProfile?.current?.();
+    const threshold=profile?.threshold||0.012;
+    session.lastLoudAt=0;
+    session.micTimer=setInterval(()=>{
+     if(s!==session)return;
+     analyser.getFloatTimeDomainData(data);
+     let power=0;for(const item of data)power+=item*item;
+     if(Math.sqrt(power/data.length)>threshold)session.lastLoudAt=Date.now();
+    },90);
+    setHistoryState(profile?'Filtro acústico calibrado ativo. Não identifica pessoas por voz. Histórico salvo localmente.':'Filtro de atividade de voz ativo. Não identifica pessoas por voz. Histórico salvo localmente.');
+   }
+  }catch{session.micAnalyser=null;setHistoryState('Filtro acústico indisponível neste dispositivo; histórico continua ativo.');}
   session.permission=true;session.paused=false;
   $('duo217Pause').textContent=t('pause');
   if(session.paired)setStatus(t('connected'));
@@ -370,7 +393,7 @@ async function copyLink(){
 }
 function close(){
  const previous=s;s=null;
- if(previous){journal(previous,'session-end');previous.active=false;clearTimeout(previous.restart);clearTimeout(previous.reconnect);clearInterval(previous.heartbeat);
+ if(previous){journal(previous,'session-end');previous.active=false;clearInterval(previous.micTimer);previous.micStream?.getTracks().forEach(track=>track.stop());clearTimeout(previous.restart);clearTimeout(previous.reconnect);clearInterval(previous.heartbeat);
   try{previous.rec?.abort();}catch{}try{previous.ws?.close(1000,'Closed');}catch{}
   try{previous.sound?.stop();}catch{}try{previous.previewAudio?.pause();}catch{}try{window.speechSynthesis?.cancel();}catch{}try{previous.audio?.close();}catch{}
  }
