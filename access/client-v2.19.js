@@ -117,16 +117,27 @@ async function configure(values={}) {
 async function initialize() {
  providerPreference=read(localStorage,AI_CONFIG,{}).provider;
  restoreCodes();applyServices();
- const hash=new URLSearchParams(location.hash.slice(1)),invite=hash.get('duo-invite');
- if(invite!==null) {
-  // The fragment is not sent to the web host and is removed before other app scripts run.
-  hash.delete('duo-invite');const url=new URL(location.href);url.hash=hash.toString();
-  history.replaceState(null,'',url.href);
-  if(!/^[a-f0-9]{64}$/.test(invite)){error='Convite inválido. Peça um novo convite.';return;}
-  try {
-   const value=await call('/access/redeem',{invite});
-   saveSession(value);error='';
-  } catch(e) {error=e.message||'Não foi possível ativar o convite. Reabra o link para tentar novamente.';}
+ const hash=new URLSearchParams(location.hash.slice(1)),incoming=hash.get('duo-invite');
+ const guestRoom=new URLSearchParams(location.search).get('duoGuest')==='1';
+ const pendingKey='duotranslate.pending.invite.v219';
+ const invite=incoming??(guestRoom?get(sessionStorage,pendingKey):'');
+ if(invite) {
+  // Strip the one-time invitation from the URL immediately. Keep only in this tab until redeemed.
+  if(incoming!==null){
+   hash.delete('duo-invite');const url=new URL(location.href);url.hash=hash.toString();
+   history.replaceState(null,'',url.href);
+  }
+  if(!/^[a-f0-9]{64}$/.test(invite)){remove(sessionStorage,pendingKey);error='Convite inválido. Peça um novo convite.';return;}
+  put(sessionStorage,pendingKey,invite);
+  for(let attempt=0;attempt<2;attempt++){
+   try{
+    const value=await call('/access/redeem',{invite});
+    remove(sessionStorage,pendingKey);saveSession(value);error='';return;
+   }catch(e){
+    if(e.status===401||e.status===403){remove(sessionStorage,pendingKey);error=e.message;return;}
+    if(attempt===1){error='O convite não pôde ser autorizado agora. Atualize esta página para tentar novamente.';return;}
+   }
+  }
   return;
  }
  const stored=read(sessionStorage,KEY)||read(localStorage,KEY);
