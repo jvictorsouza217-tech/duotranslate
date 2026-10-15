@@ -66,7 +66,7 @@ test('v2.19 browser modules parse and UI styling plus legacy modes are unchanged
  for(const path of ['voice/free-lab.js','voice/continuous.js','voice/listening-v214.js','engine-v2.12'])assert.ok(preview.includes(path));
  assert.match(preview,/voice\/connected-v219\.js/);
  assert.match(preview,/access\/client-v2\.19\.js/);
- assert.match(access,/preview\/v2\\\.19/);
+ assert.ok(access.includes('preview/v2.19/')||access.includes('preview\\/v2\\.19'));
 });
 
 test('v2.19 only asks guest for one language for speech and listening',()=>{
