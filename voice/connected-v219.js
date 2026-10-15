@@ -55,7 +55,7 @@ async function loadVoices(lang){
  setVoiceState('Verificando vozes disponíveis na ElevenLabs…');
  let list=[];
  try{
-  list=await window.DuoEleven.loadVoices();
+  list=await window.DuoEleven.loadVoices(!currentSession?.voicesVerified);
   if(s!==currentSession && currentSession!==null)return;
   if($('duo217Hear')?.value!==lang)return;
  }catch(e){
@@ -63,6 +63,7 @@ async function loadVoices(lang){
   select.value='local';if(s)s.voice='local';return;
  }
  if(!Array.isArray(list)||!list.length){setVoiceState('Sua conta não retornou vozes ElevenLabs.');return;}
+ if(currentSession)currentSession.voicesVerified=true;
  for(const item of list){
   if(!/^[a-zA-Z0-9]{12,40}$/.test(item?.id||''))continue;
   const option=document.createElement('option');option.value=item.id;option.textContent='ElevenLabs · '+item.name;select.append(option);
@@ -73,7 +74,7 @@ async function loadVoices(lang){
  setVoiceState((select.options.length-1)+' vozes ElevenLabs disponíveis e acesso individual autorizado.');
 }
 function randomTicket(){const bytes=new Uint8Array(16);crypto.getRandomValues(bytes);return Array.from(bytes,b=>b.toString(16).padStart(2,'0')).join('');}
-function createState(role,ticket,name,speak,hear){return {role,ticket,name,speak,hear,voice:'local',active:true,paired:false,peer:null,ws:null,retries:0,
+function createState(role,ticket,name,speak,hear){return {role,ticket,name,speak,hear,voice:'local',voicesVerified:false,lastVoiceAccess:null,active:true,paired:false,peer:null,ws:null,retries:0,
  permission:false,paused:false,rec:null,restart:null,reconnect:null,heartbeat:null,lastPong:Date.now(),audio:null,playing:false,sound:null,pending:0,utterances:[],translating:false,playlist:[],link:''};}
 function makeLink(){
  const url=new URL('/duotranslate/preview/v2.19/',location.origin);
@@ -227,11 +228,18 @@ async function playQueue(){
  session.playing=true;haltRecognition();
  try{while(s===session&&session.playlist.length){
   const text=session.playlist.shift();
+  let played=false;
   try{
    if(session.voice==='local')await localSpeech(text);
    else for(let i=0;i<text.length;i+=200)await premiumSpeech(text.slice(i,i+200));
-  }catch(e){if(s===session)setStatus(t('voiceError')+' '+String(e.message||e).slice(0,140));}
-  if(s===session)setCaption('Áudio reproduzido no idioma '+session.hear+'.');
+   played=true;
+  }catch(e){
+   if(s===session){
+    setStatus(t('voiceError')+' '+String(e.message||e).slice(0,140));
+    setCaption('Texto recebido, mas áudio não reproduzido.');
+   }
+  }
+  if(s===session&&played)setCaption('Áudio reproduzido no idioma '+session.hear+'.');
  }}
  finally{if(s===session){session.playing=false;listen();}}
 }
@@ -309,6 +317,12 @@ async function initGuest(){
  void loadVoices(hear);
 }
 window.DuoConnected217={openHost,stop:close,get active(){return !!s?.active;}};
+window.addEventListener('duo-access-changed',()=>{
+ if(!s||!panel||panel.hidden)return;
+ const active=!!window.DuoAccess?.active;
+ if(s.lastVoiceAccess===active)return;
+ s.lastVoiceAccess=active;void loadVoices(s.hear);
+});
 document.addEventListener('visibilitychange',()=>{if(!s)return;if(document.hidden)haltRecognition();else if(s.paired&&s.permission&&!s.paused)setTimeout(listen,300);});
 window.addEventListener('pagehide',()=>{if(s)close();});
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',()=>{void initGuest();},{once:true});
