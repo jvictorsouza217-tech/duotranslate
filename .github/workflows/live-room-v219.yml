@@ -1,0 +1,19 @@
+name: DuoTranslate live room smoke
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+permissions:
+  contents: read
+jobs:
+  room-smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Check deployed room WebSocket and voice Worker without paid calls
+        run: node tests/live-room-v219.mjs
