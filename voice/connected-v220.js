@@ -160,9 +160,13 @@ function connect(){
   if(msg.type==='pong')session.lastPong=Date.now();
   if(msg.type==='ready')sendHello();
   if(msg.type==='waiting'){session.paired=false;haltRecognition();setStatus(t('waiting'));}
-  if(msg.type==='paired'){session.paired=true;session.retries=0;session.peer=msg.peer;setStatus(t('connected')+(session.permission?'':' '+t('mic')));listen();}
+  if(msg.type==='paired'){session.paired=true;session.retries=0;session.peer=msg.peer;journal(session,'connected',{speaker:msg.peer?.name});setStatus(t('connected')+(session.permission?'':' '+t('mic')));listen();}
   if(msg.type==='speech'&&msg.target===session.hear){
    display(msg.original,msg.translation,false);
+   rememberOutput(session,msg.translation);
+   journal(session,'received',{direction:'received',speaker:session.peer?.name||'Outro dispositivo',
+    original:msg.original,translation:msg.translation,source:msg.source||session.peer?.speaks,
+    target:session.hear,provider:msg.provider});
    setCaption('Tradução recebida. Reproduzindo no idioma '+session.hear+'…');
    session.playlist.push(msg.translation);void playQueue();
   }
@@ -203,14 +207,22 @@ async function unlockMicrophone(){
 }
 function haltRecognition(){if(!s)return;clearTimeout(s.restart);const r=s.rec;s.rec=null;try{r?.abort();}catch{}}
 function listen(){
- const session=s;if(!session?.paired||!session.permission||session.paused||session.playing||session.rec)return;
+ const session=s;if(!session?.paired||!session.permission||session.paused||session.playing||session.previewing||session.rec||Date.now()<(session.outputMuteUntil||0))return;
  const SR=window.SpeechRecognition||window.webkitSpeechRecognition;if(!SR)return;
  const r=new SR();session.rec=r;r.lang=session.speak;r.continuous=true;r.interimResults=true;
  r.onresult=e=>{if(s!==session||session.playing||!session.paired)return;for(let i=e.resultIndex;i<e.results.length;i++){
    const row=e.results[i],spoken=String(row[0]?.transcript||'').trim();
    if(!spoken)continue;
-   if(row.isFinal){setCaption('Fala reconhecida: '+spoken.slice(0,100));queueSpeech(spoken);}
-   else setCaption('🎙 Ouvindo: '+spoken.slice(0,160));
+   if(row.isFinal){
+    const confidence=Number(row[0]?.confidence)||0;
+    journal(session,'recognized',{direction:'sent',original:spoken,provider:'Browser SpeechRecognition'});
+    const reason=rejectSpeech(session,spoken,confidence);
+    if(reason){setCaption('Fala ignorada: '+reason);
+     journal(session,'rejected',{original:spoken,error:reason});continue;}
+    session.recentSpeech.push({value:normalizeSpeech(spoken),at:Date.now()});
+    session.recentSpeech=session.recentSpeech.filter(v=>Date.now()-v.at<30000).slice(-15);
+    setCaption('Fala reconhecida: '+spoken.slice(0,100));queueSpeech(spoken);
+   }else if(!session.playing&&Date.now()>=session.outputMuteUntil)setCaption('🎙 Ouvindo: '+spoken.slice(0,160));
  }};
  r.onerror=e=>{if(s!==session)return;
   if(['not-allowed','service-not-allowed','audio-capture'].includes(e.error)){session.permission=false;setStatus(t('denied'));}
@@ -249,9 +261,11 @@ async function translate(original){
   const result=await window.DuoReliable.translate(original,session.speak,target);
   if(s!==session||!session.paired)return;
   display(original,result.text,true);
+  journal(session,'translated',{direction:'sent',original,translation:result.text,target,provider:result.provider});
   send({type:'speech',original:original.slice(0,600),translation:result.text.slice(0,900),provider:result.provider,target});
   setCaption('Tradução pronta e enviada para '+target+'.');
- }catch(e){if(s===session)setStatus('Falha de tradução: '+String(e.message||e).slice(0,135));}
+ }catch(e){if(s===session){setStatus('Falha de tradução: '+String(e.message||e).slice(0,135));
+   journal(session,'translation-error',{direction:'sent',original,error:String(e.message||e)});}}
  finally{session.pending--;}
 }
 function localSpeech(text){
@@ -267,13 +281,13 @@ function localSpeech(text){
   try{window.speechSynthesis.speak(u);}catch(e){finish(e);}
  });
 }
-async function premiumSpeech(text){
+async function premiumSpeech(text,voiceOverride){
  const session=s;
  if(!window.DuoAccess?.active)throw Error(t('permission'));
  if(!session.audio)throw Error('Áudio não autorizado');
  const abort=new AbortController(),timer=setTimeout(()=>abort.abort(),20000);
  let result;try{result=await window.DuoAccess.fetch(window.DuoAccess.voiceUrl+'/stream-tts',{
-  method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({text,lang:session.hear,voiceId:session.voice}),signal:abort.signal
+  method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({text,lang:session.hear,voiceId:voiceOverride||session.voice}),signal:abort.signal
  });}finally{clearTimeout(timer);}
  if(!result.ok){const error=await result.json().catch(()=>({}));throw Error(error.error||'ElevenLabs HTTP '+result.status);}
  const audio=await session.audio.decodeAudioData(await result.arrayBuffer());await session.audio.resume();
@@ -281,7 +295,7 @@ async function premiumSpeech(text){
 }
 async function playQueue(){
  const session=s;if(!session||session.playing||!session.playlist.length)return;
- session.playing=true;haltRecognition();
+ session.playing=true;haltRecognition();session.outputMuteUntil=Date.now()+60000;
  try{while(s===session&&session.playlist.length){
   const text=session.playlist.shift();
   let played=false;
@@ -291,13 +305,15 @@ async function playQueue(){
    played=true;
   }catch(e){
    if(s===session){
+    journal(session,'playback-error',{direction:'received',original:text,error:String(e.message||e),playback:'failed'});
     setStatus(t('voiceError')+' '+String(e.message||e).slice(0,140));
     setCaption('Texto recebido, mas áudio não reproduzido.');
    }
   }
-  if(s===session&&played)setCaption('Áudio reproduzido no idioma '+session.hear+'.');
+  if(s===session&&played){journal(session,'played',{direction:'received',original:text,playback:session.voice==='local'?'device':'ElevenLabs'});
+   setCaption('Áudio reproduzido no idioma '+session.hear+'.');}
  }}
- finally{if(s===session){session.playing=false;listen();}}
+ finally{if(s===session){session.playing=false;session.outputMuteUntil=Date.now()+1800;setTimeout(listen,1950);}}
 }
 async function premiumInvite(){
  const session=s;if(!session||session.role!=='host')return;
@@ -354,9 +370,9 @@ async function copyLink(){
 }
 function close(){
  const previous=s;s=null;
- if(previous){previous.active=false;clearTimeout(previous.restart);clearTimeout(previous.reconnect);clearInterval(previous.heartbeat);
+ if(previous){journal(previous,'session-end');previous.active=false;clearTimeout(previous.restart);clearTimeout(previous.reconnect);clearInterval(previous.heartbeat);
   try{previous.rec?.abort();}catch{}try{previous.ws?.close(1000,'Closed');}catch{}
-  try{previous.sound?.stop();}catch{}try{window.speechSynthesis?.cancel();}catch{}try{previous.audio?.close();}catch{}
+  try{previous.sound?.stop();}catch{}try{previous.previewAudio?.pause();}catch{}try{window.speechSynthesis?.cancel();}catch{}try{previous.audio?.close();}catch{}
  }
  if(panel){panel.hidden=true;$('duo217Messages').replaceChildren();
   $('duo217Join').classList.remove('hide');$('duo217Copy').classList.add('hide');$('duo217Pause').classList.add('hide');}
