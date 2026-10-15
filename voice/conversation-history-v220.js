@@ -45,6 +45,9 @@ function existingHistory(event){
 }
 async function add(entry){
  const event=normalize(entry||{});
+ // Explicit History opt-out always takes precedence over connected-mode defaults.
+ if(localStorage.getItem('duotranslate.history.enabled.v1')==='false')
+  return {saved:false,disabled:true,event,error:'Histórico desativado nas configurações'};
  try{
   const db=await open();
   await new Promise((resolve,reject)=>{
