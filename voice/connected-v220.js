@@ -10,7 +10,7 @@ const labels={
  fr:{title:'Conversation vocale',sub:'Parlez votre langue et écoutez la traduction.',name:'Votre nom',speak:'Ma langue (je parle et j’écoute)',hear:'Langue de lecture',voice:'Voix que je veux entendre',join:'Entrer et parler',copy:"Copier l'invitation",exit:'Quitter',pause:'Couper le micro',resume:'Activer le micro',waiting:'Salon prêt. Envoyez le lien.',connecting:'Connexion des appareils…',connected:'Connectés! Parlez normalement.',mic:'Autorisez le microphone.',denied:'Microphone bloqué. Autorisez-le dans le navigateur.',copied:'Invitation copiée!',voiceError:'Erreur de lecture de la voix :',permission:'ElevenLabs non autorisé ; voix gratuite disponible.',noPremium:'Lien créé sans ElevenLabs. Voix gratuite disponible.',retry:'Reconnexion…',activate:'Activer le micro',busy:'Paroles rapides : traduction en attente…'},
  en:{title:'Voice conversation',sub:'Speak your language and hear the translation.',name:'Your name',speak:'My language (speak and listen)',hear:'Playback language',voice:'Voice I want to hear',join:'Join and talk',copy:'Copy invite',exit:'Leave',pause:'Pause microphone',resume:'Resume microphone',waiting:'Room ready. Send the invitation.',connecting:'Connecting devices…',connected:'Connected! Speak naturally.',mic:'Allow microphone access.',denied:'Microphone blocked. Enable microphone access.',copied:'Invitation copied!',voiceError:'Voice playback error:',permission:'ElevenLabs not authorized; device voice available.',noPremium:'Room ready; invite without ElevenLabs. Device voice available.',retry:'Reconnecting…',activate:'Enable microphone',busy:'Speech queue busy: translating…'}
 };
-let panel=null,s=null,language='pt',guestReady=false;
+let panel=null,s=null,language='pt',guestReady=false,voiceRequestId=0;
 const normalizeSpeech=text=>String(text||'').toLowerCase().normalize('NFKD').replace(/[\u0300-\u036f]/g,'').replace(/[^\p{L}\p{N}\s]/gu,' ').replace(/\s+/g,' ').trim();
 function setHistoryState(message){if($('duo217HistoryState'))$('duo217HistoryState').textContent=message;}
 function journal(session,stage,data={}){
@@ -82,7 +82,7 @@ function setup(){
  $('duo217Name').onchange=()=>{if(s){s.name=$('duo217Name').value.trim().slice(0,40)||'Convidado';sendHello();}};
 }
 async function loadVoices(lang){
- const select=$('duo217Voice'),currentSession=s;
+ const select=$('duo217Voice'),currentSession=s,requestId=++voiceRequestId;
  const old=select.value,preferred=currentSession?.voice||old;
  select.replaceChildren();
  const local=document.createElement('option');local.value='local';local.textContent='Voz do dispositivo · gratuita';select.append(local);
@@ -96,9 +96,11 @@ async function loadVoices(lang){
  let list=[];
  try{
   list=await window.DuoEleven.loadVoices(!currentSession?.voicesVerified);
+  if(requestId!==voiceRequestId)return;
   if(s!==currentSession && currentSession!==null)return;
   if($('duo217Hear')?.value!==lang)return;
  }catch(e){
+  if(requestId!==voiceRequestId)return;
   setVoiceState('Não foi possível carregar vozes: '+String(e.message||e).slice(0,160));
   select.value='local';if(s)s.voice='local';return;
  }
@@ -107,7 +109,7 @@ async function loadVoices(lang){
  for(const item of list){
   if(!/^[a-zA-Z0-9]{12,40}$/.test(item?.id||''))continue;
   const option=document.createElement('option');option.value=item.id;option.textContent='ElevenLabs · '+item.name;select.append(option);
-  if(currentSession&&item.preview?.startsWith('https://')){currentSession.voicePreviews[item.id]=item.preview;}
+  if(s&&item.preview?.startsWith('https://')){s.voicePreviews[item.id]=item.preview;}
  }
  const savedVoice=window.DuoEleven?.choices?.(lang)?.selected;
  const chosen=[preferred,savedVoice].find(v=>v&&v!=='local'&&[...select.options].some(o=>o.value===v));
